@@ -104,7 +104,8 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
     </div>
 
     <section id="tab-kids" class="hidden">
-      <button class="btn hidden" id="kidsBack" style="margin-bottom:10px">→ חזרה לרשימות</button>
+      <input class="search" id="kq" type="search" placeholder="חיפוש שיר, זמר או פרק…" autocomplete="off">
+      <button class="btn hidden" id="kidsBack" style="margin-bottom:10px">→ חזרה לרשימה</button>
       <div class="list" id="kidsList"><div class="empty">טוען…</div></div>
     </section>
 
@@ -161,8 +162,39 @@ const API = 'https://api.spotify.com/v1';
    shows:     מזהי פודקאסטים מאושרים (החלק שאחרי /show/ בקישור).
    הגרסה שרצה במחשב (127.0.0.1) פתוחה לגמרי; כל מקום אחר מציג רק את מה שכאן. */
 const ALLOWED = {
-  playlists: ['1C2b4IA0jrYl7jqEzhTYGK'],
-  shows: ['4HfDVNqt8DOyFG4qsNlKrF', '7kumGplsj21s8PQH9dEr7C']
+  artists: [
+    { id:'13Bny64Z0lG2BQFHhrMTPb', name:'בן צור' },
+    { id:'5C9yoYmFBktMXwP9SoLLIP', name:'אביגיל' },
+    { id:'7m09aLn1QHUz5D7hqNnkW2', name:'יאיר אלייצור' },
+    { id:'7CgBEyXbjOjFX3HiysHtXN', name:'שולי רנד' },
+    { id:'343YYaA5MSjiZZ5cGyTr4u', name:'חנן בן ארי' },
+    { id:'3VTm1513t2LL1mSKzzyQuj', name:'ישי ריבו' },
+    { id:'2gY5qyOAJApJoxr9FGt7Qn', name:'יונתן שינפלד' },
+    { id:'5eVh2c6WuigJCj1WrHfnd5', name:'יעקב שוואקי' },
+    { id:'0NLEL3BBW71Oshh5R7wpJl', name:'שמחה פרידמן' },
+    { id:'3VbJFS67YDdxun99QYaF5p', name:'שי וינר' },
+    { id:'6IDzwVsZdjzXYLF7IDENaq', name:'שמוליק סוכות' },
+    { id:'05iRQUcipjT4IA9swuMIU5', name:'מרדכי שפירא' },
+    { id:'0q7HH30kbY8dCPGHCsq2Ug', name:'ערוץ בייבי' },
+    { id:'3Y0YvS2crBLVS9eA5jX8Ux', name:'משה קליין' },
+    { id:'4OqhRVs3bnTqs7ugKApPp9', name:'קובי ברומר' },
+    { id:'4ZacNUWpBQ9JoQuvkYys9t', name:'זאבי' },
+    { id:'6qoI5oVBsvLAd6ivzoF1Vk', name:'אבי אילסון' },
+    { id:'4aTDB7CQyMNOLQsCpAS9EW', name:'בני פרידמן' },
+    { id:'1WWc6zXfTwpakU8Ds5yS1G', name:'מוטי וייס' },
+    { id:'70287pcNpILjcpoBl0soPs', name:'איציק דדיה' },
+    { ids:['5GCh3ZazIVWg8eKb5Akv0q','7wCViOhA0Yp7lOwZUqEYJJ'], name:'אברהם פריד' }
+  ],
+  /* שירים בודדים מאושרים (מזהה השיר: החלק שאחרי /track/ בקישור) */
+  tracks: ['74pfNNxGlwSyokwtqxHcDa', '72W6xVQGdKHQl348KYgwg2'],
+  playlists: [],
+  /* פודקאסטים: כל הפודקאסטים של המפיקים ברשימה, וגם המזהים הבודדים */
+  publishers: ['משפחה פודקאסט'],
+  shows: ['4HfDVNqt8DOyFG4qsNlKrF','7kumGplsj21s8PQH9dEr7C','033I03Zx4MJfzvbbh0Bki3','033HqITxo068MqNKMPe1IB',
+          '7m1aUsVHU3xKE2PoH7ePV1','7zq4a9RsQnPF9upztDAI2t','18DK7YVb4ifw2eOhhQuM2m','307yEnylNqx63QaxC2ViXG',
+          '64Hbfx5WNc6DR86C4wI9b9','033XRPiUSiMkra2n1IosyI','0k88mnvGE7CruFVlC04OpH','0345g1iSzQddQfzg8vAIOA',
+          '58vhM3ootLAcFvvmZiG5JR','2qNB8zBifbXZM3dCVHKmvr','0342pWzaEOSWHv3pZpozlz','033I03VKVTZ3FvVdirwZGL',
+          '2RPbulEmCnZQWgOa1lcSQT']
 };
 const FULL = location.hostname === '127.0.0.1';
 
@@ -429,50 +461,182 @@ $('likedList').addEventListener('click', e => {
   play({ uris: liked.slice(from, from + 100).map(t => t.uri) });
 });
 
-/* שירים מאושרים */
-let kpls = [], curKpl = null, kTracks = [];
-function renderKids(){
-  $('kidsBack').classList.add('hidden');
-  $('kidsList').innerHTML = kpls.length ? kpls.map((p, i) => {
-    const n = (p.items && p.items.total) ?? (p.tracks && p.tracks.total);
-    return `<div class="row" data-i="${i}"><div class="n">${i+1}</div><div class="t"><b>${esc(p.name)}</b>
-      <span>${n != null ? n + ' שירים' : ''}</span></div><div class="d">‹</div></div>`;
-  }).join('') : '<div class="empty">עדיין לא אושרו שירים</div>';
+/* ---------- תוכן מאושר ---------- */
+const norm = s => String(s || '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(/["'״׳]/g, '').replace(/\s+/g, ' ').trim();
+const TTL = { art: 24*3600e3, show: 3*3600e3, list: 24*3600e3 };
+function cget(k, ttl){ try{ const v = JSON.parse(store.get(k) || 'null'); return v && Date.now() - v.t < ttl ? v.d : null; }catch(e){ return null; } }
+function cset(k, d){ store.set(k, JSON.stringify({ t: Date.now(), d })); }
+async function apiRetry(path, opts){
+  for (let i = 0; ; i++){
+    try{ return await api(path, opts); }
+    catch(e){ if (e.status === 429 && i < 4){ await new Promise(r => setTimeout(r, 2500 * (i + 1))); continue; } throw e; }
+  }
+}
+const slim = (t, albumName) => ({ uri:t.uri, name:t.name, artists:(t.artists || []).map(a => ({ name:a.name })),
+  album:{ name: albumName != null ? albumName : ((t.album && t.album.name) || '') }, duration_ms:t.duration_ms });
+const slimEp = (e, show) => ({ uri:e.uri, name:e.name, release_date:e.release_date, duration_ms:e.duration_ms, show });
+const dedupe = (arr, key) => { const seen = new Set(); return arr.filter(x => { const k = norm(key(x)); if (seen.has(k)) return false; seen.add(k); return true; }); };
+
+async function artistTracks(a){
+  const ids = a.ids || [a.id], k = 'art_' + ids.join('_');
+  const c = cget(k, TTL.art); if (c) return c;
+  let albums = [];
+  for (const id of ids){
+    let next = `/artists/${id}/albums?include_groups=album,single&limit=50&market=from_token`;
+    while (next){ const j = await apiRetry(next); albums = albums.concat((j.items || []).filter(Boolean)); next = j.next; }
+  }
+  albums = dedupe(albums, x => x.name);
+  let tracks = [];
+  for (let i = 0; i < albums.length; i += 20){
+    const j = await apiRetry('/albums', { query:{ ids: albums.slice(i, i + 20).map(x => x.id).join(','), market:'from_token' } });
+    (j.albums || []).filter(Boolean).forEach(al => ((al.tracks && al.tracks.items) || []).filter(t => t && t.uri).forEach(t => tracks.push(slim(t, al.name))));
+  }
+  tracks = dedupe(tracks, t => t.name);
+  cset(k, tracks); return tracks;
+}
+async function playlistTracks(p){
+  const k = 'pl_' + p.id, c = cget(k, TTL.art); if (c) return c;
+  let tracks = [], next = `/playlists/${p.id}/tracks?limit=100&market=from_token`;
+  while (next && tracks.length < 500){
+    let j;
+    try{ j = await apiRetry(next); }
+    catch(e){ if (!tracks.length && next.includes('/tracks')){ next = next.replace('/tracks', '/items'); j = await apiRetry(next); } else throw e; }
+    tracks = tracks.concat((j.items || []).map(x => x.track || x.item).filter(t => t && t.uri).map(t => slim(t))); next = j.next;
+  }
+  cset(k, tracks); return tracks;
+}
+async function singleTracks(){
+  if (!ALLOWED.tracks.length) return [];
+  const k = 'tr_' + ALLOWED.tracks.join('_'), c = cget(k, TTL.art); if (c) return c;
+  let tracks = [];
+  for (let i = 0; i < ALLOWED.tracks.length; i += 50){
+    const j = await apiRetry('/tracks', { query:{ ids: ALLOWED.tracks.slice(i, i + 50).join(','), market:'from_token' } });
+    tracks = tracks.concat((j.tracks || []).filter(t => t && t.uri).map(t => slim(t)));
+  }
+  cset(k, tracks); return tracks;
+}
+async function approvedShows(){
+  const c = cget('shows_ok', TTL.list); if (c) return c;
+  const map = new Map();
+  for (let i = 0; i < ALLOWED.shows.length; i += 50){
+    const j = await apiRetry('/shows', { query:{ ids: ALLOWED.shows.slice(i, i + 50).join(','), market:'from_token' } });
+    (j.shows || []).filter(Boolean).forEach(s => map.set(s.id, s));
+  }
+  for (const pub of ALLOWED.publishers){
+    try{
+      for (let off = 0; off < 200; off += 50){
+        const j = await apiRetry('/search', { query:{ q: pub, type:'show', limit:'50', offset:String(off), market:'from_token' } });
+        const items = ((j.shows && j.shows.items) || []).filter(Boolean);
+        items.forEach(s => { if (norm(s.publisher) === norm(pub)) map.set(s.id, s); });
+        if (!(j.shows && j.shows.next) || !items.length) break;
+      }
+    }catch(e){}
+  }
+  const list = [...map.values()].map(s => ({ id:s.id, name:s.name, publisher:s.publisher, total_episodes:s.total_episodes }));
+  cset('shows_ok', list); return list;
+}
+async function showEpisodes(s){
+  const k = 'ep_' + s.id, c = cget(k, TTL.show); if (c) return c;
+  let eps = [], next = `/shows/${s.id}/episodes?limit=50&market=from_token`;
+  while (next && eps.length < 1000){ const j = await apiRetry(next); eps = eps.concat((j.items || []).filter(e => e && e.uri).map(e => slimEp(e, s.name))); next = j.next; }
+  cset(k, eps); return eps;
+}
+
+/* לשונית "שירים": אמנים, רשימות ושירים בודדים מאושרים, וחיפוש פנימי */
+let kEntries = [], curEntry = null, kTracks = [], kIndex = null, kBuilding = null;
+function entryList(){
+  const list = ALLOWED.artists.map(a => ({ type:'artist', name:a.name, src:a }))
+    .concat(ALLOWED.playlists.map(id => ({ type:'playlist', name:'', src:{ id } })));
+  if (ALLOWED.tracks.length) list.push({ type:'tracks', name:'שירים בודדים', src:null });
+  return list;
+}
+function entryTracks(en){
+  if (en.type === 'artist') return artistTracks(en.src);
+  if (en.type === 'playlist') return playlistTracks(en.src);
+  return singleTracks();
+}
+function renderEntries(){
+  curEntry = null; $('kidsBack').classList.add('hidden');
+  $('kidsList').innerHTML = kEntries.length ? kEntries.map((en, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
+    <div class="t"><b>${esc(en.name)}</b><span>${en.type === 'artist' ? 'כל השירים' : en.type === 'playlist' ? 'רשימת השמעה' : ''}</span></div><div class="d">‹</div></div>`).join('')
+    : '<div class="empty">עדיין לא אושרו שירים</div>';
 }
 async function loadKids(){
-  const got = [];
-  for (const id of ALLOWED.playlists){
-    try{ got.push(await api('/playlists/' + id)); }catch(e){}
+  kEntries = entryList();
+  for (const en of kEntries.filter(x => x.type === 'playlist')){
+    try{ const p = await apiRetry('/playlists/' + en.src.id); en.name = p.name; en.src = p; }catch(e){ en.name = 'רשימה'; }
   }
-  kpls = got;
-  if (!got.length && ALLOWED.playlists.length){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את הרשימות</div>'; return; }
-  renderKids();
+  renderEntries();
 }
-async function openKpl(p){
-  curKpl = p; kTracks = [];
+async function openEntry(en){
+  curEntry = en; kTracks = [];
   $('kidsBack').classList.remove('hidden');
   $('kidsList').innerHTML = '<div class="empty">טוען…</div>';
   try{
-    let next = `/playlists/${p.id}/tracks?limit=100&market=from_token`;
-    while (next && kTracks.length < 500){
-      let j;
-      try{ j = await api(next); }
-      catch(e){ if (!kTracks.length && next.includes('/tracks')) { next = next.replace('/tracks', '/items'); j = await api(next); } else throw e; }
-      kTracks = kTracks.concat((j.items || []).map(x => x.track || x.item).filter(t => t && t.uri)); next = j.next;
-    }
-    $('kidsList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(p.name)}</b><span>לחיצה על שיר מנגנת אותו ואת הבאים אחריו</span></div></div>` +
-      (kTracks.length ? rowsHTML(kTracks, 0) : '<div class="empty">אין שירים ברשימה</div>');
+    kTracks = await entryTracks(en);
+    if (curEntry !== en) return;
+    $('kidsList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(en.name)}</b><span>${kTracks.length} שירים · לחיצה על שיר מנגנת אותו ואת הבאים אחריו</span></div></div>` +
+      (kTracks.length ? rowsHTML(kTracks, 0) : '<div class="empty">אין שירים</div>');
   }catch(e){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את השירים</div>'; toast(e.message); }
 }
-$('kidsList').addEventListener('click', async e => {
-  const r = e.target.closest('.row'); if (!r || r.dataset.i == null) return;
+async function buildIndex(onProgress){
+  if (kIndex) return kIndex;
+  if (kBuilding) return kBuilding;
+  kBuilding = (async () => {
+    const tracks = [], eps = [];
+    const ents = kEntries.length ? kEntries : entryList();
+    let n = 0, total = ents.length + 1;
+    for (const en of ents){
+      try{ (await entryTracks(en)).forEach(t => tracks.push(t)); }catch(e){}
+      onProgress && onProgress(++n, total);
+    }
+    try{
+      const shows = await approvedShows(); total += shows.length;
+      onProgress && onProgress(++n, total);
+      for (const s of shows){ try{ (await showEpisodes(s)).forEach(e => eps.push(e)); }catch(e){} onProgress && onProgress(++n, total); }
+    }catch(e){}
+    kIndex = { tracks: dedupe(tracks, t => t.uri), eps };
+    return kIndex;
+  })().finally(() => { kBuilding = null; });
+  return kBuilding;
+}
+let kRes = { tracks:[], eps:[] };
+function epRowsHTML(eps, start){
+  return eps.map((e, i) => `<div class="row" data-ep="${start+i}"><div class="n">🎙</div>
+    <div class="t"><b>${esc(e.name)}</b><span>${esc(e.show || '')}${e.release_date ? ' · ' + esc(e.release_date) : ''}</span></div>
+    <div class="d">${fmt(e.duration_ms)}</div></div>`).join('');
+}
+async function kidsSearch(){
+  const q = norm($('kq').value);
+  if (!q){ if (!curEntry) renderEntries(); return; }
+  curEntry = null; $('kidsBack').classList.add('hidden');
+  if (!kIndex){
+    $('kidsList').innerHTML = '<div class="empty">טוען את כל השירים בפעם הראשונה…</div>';
+    await buildIndex((n, t) => { $('kidsList').innerHTML = `<div class="empty">טוען את כל השירים בפעם הראשונה… ${n}/${t}</div>`; });
+    if (norm($('kq').value) !== q) return;
+  }
+  const words = q.split(' ');
+  const hit = s => { const n = norm(s); return words.every(w => n.includes(w)); };
+  kRes = {
+    tracks: kIndex.tracks.filter(t => hit(t.name + ' ' + artists(t.artists) + ' ' + (t.album && t.album.name || ''))).slice(0, 100),
+    eps: kIndex.eps.filter(e => hit(e.name + ' ' + (e.show || ''))).slice(0, 100)
+  };
+  $('kidsList').innerHTML = (kRes.tracks.length || kRes.eps.length)
+    ? rowsHTML(kRes.tracks, 0) + epRowsHTML(kRes.eps, 0)
+    : '<div class="empty">לא נמצא כלום בחיפוש הזה</div>';
+}
+let kqT;
+$('kq').addEventListener('input', () => { clearTimeout(kqT); kqT = setTimeout(kidsSearch, 350); });
+$('kidsList').addEventListener('click', e => {
+  const r = e.target.closest('.row'); if (!r) return;
+  if (r.dataset.ep != null){ play({ uris: [kRes.eps[+r.dataset.ep].uri] }); return; }
+  if (r.dataset.i == null) return;
   const i = +r.dataset.i;
-  if (!curKpl){ openKpl(kpls[i]); return; }
-  const t = kTracks[i];
-  const ok = await play({ context_uri: curKpl.uri, offset:{ uri: t.uri } }, true);
-  if (!ok) play({ uris: kTracks.slice(i, i + 100).map(x => x.uri) });
+  if (norm($('kq').value)){ play({ uris: kRes.tracks.slice(i, i + 50).map(x => x.uri) }); return; }
+  if (!curEntry){ openEntry(kEntries[i]); return; }
+  play({ uris: kTracks.slice(i, i + 100).map(x => x.uri) });
 });
-$('kidsBack').onclick = () => { curKpl = null; renderKids(); };
+$('kidsBack').onclick = () => { $('kq').value = ''; renderEntries(); };
 
 /* פודקאסטים */
 let shows = [], showNext = FULL ? '/me/shows?limit=50' : null, curShow = null, eps = [], epNext = null;
@@ -485,16 +649,14 @@ function renderShows(){
 }
 async function loadShows(){
   try{
-    if (!FULL){
-      if (!shows.length && ALLOWED.shows.length){
-        const j = await api('/shows', { query:{ ids: ALLOWED.shows.join(','), market:'from_token' } });
-        shows = (j.shows || []).filter(Boolean);
-      }
-      return renderShows();
+    if (!shows.length){
+      shows = await approvedShows();
+      shows.sort((a, b) => a.name.localeCompare(b.name, 'he'));
     }
-    if (!showNext) return renderShows();
+    if (!FULL || !showNext) return renderShows();
     const j = await api(showNext);
-    shows = shows.concat((j.items || []).map(x => x.show).filter(Boolean)); showNext = j.next;
+    (j.items || []).map(x => x.show).filter(Boolean).forEach(s => { if (!shows.some(x => x.id === s.id)) shows.push(s); });
+    showNext = j.next;
     renderShows();
   }catch(e){ $('showList').innerHTML = '<div class="empty">לא ניתן לטעון</div>'; toast(e.message); }
 }
