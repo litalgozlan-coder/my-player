@@ -96,11 +96,17 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
   <div id="appView" class="hidden">
     <div id="sdkNote" class="note hidden"></div>
     <div class="tabs">
-      <button class="tab on" data-tab="search">חיפוש</button>
+      <button class="tab" data-tab="kids">שירים</button>
+      <button class="tab" data-tab="shows">פודקאסטים</button>
+      <button class="tab" data-tab="search">חיפוש</button>
       <button class="tab" data-tab="playlists">הרשימות שלי</button>
       <button class="tab" data-tab="liked">שירים שאהבתי</button>
-      <button class="tab" data-tab="shows">פודקאסטים</button>
     </div>
+
+    <section id="tab-kids" class="hidden">
+      <button class="btn hidden" id="kidsBack" style="margin-bottom:10px">→ חזרה לרשימות</button>
+      <div class="list" id="kidsList"><div class="empty">טוען…</div></div>
+    </section>
 
     <section id="tab-search">
       <input class="search" id="q" type="search" placeholder="חיפוש שיר או אמן…" autocomplete="off">
@@ -149,6 +155,16 @@ const REDIRECT_URI = location.origin + BASE + 'callback';
 const SCOPES = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative user-library-read';
 const TOKEN_URL = 'https://accounts.spotify.com/api/token';
 const API = 'https://api.spotify.com/v1';
+
+/* ---------- מה מותר בנגן ----------
+   playlists: מזהי רשימות השמעה מאושרות (החלק שאחרי /playlist/ בקישור של ספוטיפיי).
+   shows:     מזהי פודקאסטים מאושרים (החלק שאחרי /show/ בקישור).
+   הגרסה שרצה במחשב (127.0.0.1) פתוחה לגמרי; כל מקום אחר מציג רק את מה שכאן. */
+const ALLOWED = {
+  playlists: ['1C2b4IA0jrYl7jqEzhTYGK'],
+  shows: ['4HfDVNqt8DOyFG4qsNlKrF', '7kumGplsj21s8PQH9dEr7C']
+};
+const FULL = location.hostname === '127.0.0.1';
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -280,16 +296,21 @@ $('devices').addEventListener('change', async e => {
 $('refreshDev').onclick = refreshDevices;
 
 /* ---------- ניגון ---------- */
-async function play(body){
+async function play(body, quiet){
   if (player && player.activateElement) { try{ player.activateElement(); }catch(e){} }
+  let ok = true;
   try{
     await api('/me/player/play', { method:'PUT', query: currentDeviceId ? { device_id: currentDeviceId } : undefined, body });
   }catch(e){
-    if (e.status === 404) toast('לא נמצא מכשיר פעיל. בחרי מכשיר מהרשימה למעלה.');
-    else if (e.status === 403) toast('הפעולה לא אפשרית כרגע (' + e.message + ')');
-    else toast(e.message);
+    ok = false;
+    if (!quiet){
+      if (e.status === 404) toast('לא נמצא מכשיר פעיל. בחרי מכשיר מהרשימה למעלה.');
+      else if (e.status === 403) toast('הפעולה לא אפשרית כרגע (' + e.message + ')');
+      else toast(e.message);
+    }
   }
   pollSoon();
+  return ok;
 }
 async function ctl(path, method, query){
   try{ await api(path, { method, query: Object.assign({}, query || {}, currentDeviceId ? { device_id: currentDeviceId } : {}) }); }
@@ -408,18 +429,70 @@ $('likedList').addEventListener('click', e => {
   play({ uris: liked.slice(from, from + 100).map(t => t.uri) });
 });
 
+/* שירים מאושרים */
+let kpls = [], curKpl = null, kTracks = [];
+function renderKids(){
+  $('kidsBack').classList.add('hidden');
+  $('kidsList').innerHTML = kpls.length ? kpls.map((p, i) => {
+    const n = (p.items && p.items.total) ?? (p.tracks && p.tracks.total);
+    return `<div class="row" data-i="${i}"><div class="n">${i+1}</div><div class="t"><b>${esc(p.name)}</b>
+      <span>${n != null ? n + ' שירים' : ''}</span></div><div class="d">‹</div></div>`;
+  }).join('') : '<div class="empty">עדיין לא אושרו שירים</div>';
+}
+async function loadKids(){
+  const got = [];
+  for (const id of ALLOWED.playlists){
+    try{ got.push(await api('/playlists/' + id)); }catch(e){}
+  }
+  kpls = got;
+  if (!got.length && ALLOWED.playlists.length){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את הרשימות</div>'; return; }
+  renderKids();
+}
+async function openKpl(p){
+  curKpl = p; kTracks = [];
+  $('kidsBack').classList.remove('hidden');
+  $('kidsList').innerHTML = '<div class="empty">טוען…</div>';
+  try{
+    let next = `/playlists/${p.id}/tracks?limit=100&market=from_token`;
+    while (next && kTracks.length < 500){
+      let j;
+      try{ j = await api(next); }
+      catch(e){ if (!kTracks.length && next.includes('/tracks')) { next = next.replace('/tracks', '/items'); j = await api(next); } else throw e; }
+      kTracks = kTracks.concat((j.items || []).map(x => x.track || x.item).filter(t => t && t.uri)); next = j.next;
+    }
+    $('kidsList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(p.name)}</b><span>לחיצה על שיר מנגנת אותו ואת הבאים אחריו</span></div></div>` +
+      (kTracks.length ? rowsHTML(kTracks, 0) : '<div class="empty">אין שירים ברשימה</div>');
+  }catch(e){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את השירים</div>'; toast(e.message); }
+}
+$('kidsList').addEventListener('click', async e => {
+  const r = e.target.closest('.row'); if (!r || r.dataset.i == null) return;
+  const i = +r.dataset.i;
+  if (!curKpl){ openKpl(kpls[i]); return; }
+  const t = kTracks[i];
+  const ok = await play({ context_uri: curKpl.uri, offset:{ uri: t.uri } }, true);
+  if (!ok) play({ uris: kTracks.slice(i, i + 100).map(x => x.uri) });
+});
+$('kidsBack').onclick = () => { curKpl = null; renderKids(); };
+
 /* פודקאסטים */
-let shows = [], showNext = '/me/shows?limit=50', curShow = null, eps = [], epNext = null;
+let shows = [], showNext = FULL ? '/me/shows?limit=50' : null, curShow = null, eps = [], epNext = null;
 function renderShows(){
   $('showBack').classList.add('hidden');
   $('showList').innerHTML = shows.length ? shows.map((s, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
     <div class="t"><b>${esc(s.name)}</b><span>${s.total_episodes != null ? s.total_episodes + ' פרקים' : ''}${s.publisher ? ' · ' + esc(s.publisher) : ''}</span></div><div class="d">‹</div></div>`).join('')
-    : '<div class="empty">אין פודקאסטים שמורים</div>';
+    : '<div class="empty">עדיין לא אושרו פודקאסטים</div>';
   $('showMore').classList.toggle('hidden', !showNext);
 }
 async function loadShows(){
-  if (!showNext) return renderShows();
   try{
+    if (!FULL){
+      if (!shows.length && ALLOWED.shows.length){
+        const j = await api('/shows', { query:{ ids: ALLOWED.shows.join(','), market:'from_token' } });
+        shows = (j.shows || []).filter(Boolean);
+      }
+      return renderShows();
+    }
+    if (!showNext) return renderShows();
     const j = await api(showNext);
     shows = shows.concat((j.items || []).map(x => x.show).filter(Boolean)); showNext = j.next;
     renderShows();
@@ -455,12 +528,19 @@ $('showBack').onclick = () => { curShow = null; renderShows(); };
 $('showMore').onclick = () => curShow ? loadEps() : loadShows();
 
 /* לשוניות */
-let likedLoaded = false, showsLoaded = false;
-document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-  ['search','playlists','liked','shows'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
-  if (b.dataset.tab === 'liked' && !likedLoaded){ likedLoaded = true; loadLiked(); }
-  if (b.dataset.tab === 'shows' && !showsLoaded){ showsLoaded = true; loadShows(); }
+const TABS = FULL ? ['kids','shows','search','playlists','liked'] : ['kids','shows'];
+let likedLoaded = false, showsLoaded = false, kidsLoaded = false, plLoaded = false;
+function selectTab(name){
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
+  ['kids','shows','search','playlists','liked'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
+  if (name === 'kids' && !kidsLoaded){ kidsLoaded = true; loadKids(); }
+  if (name === 'shows' && !showsLoaded){ showsLoaded = true; loadShows(); }
+  if (name === 'playlists' && !plLoaded){ plLoaded = true; loadPlaylists(); }
+  if (name === 'liked' && !likedLoaded){ likedLoaded = true; loadLiked(); }
+}
+document.querySelectorAll('.tab').forEach(b => {
+  if (!TABS.includes(b.dataset.tab)) b.classList.add('hidden');
+  b.onclick = () => selectTab(b.dataset.tab);
 });
 
 /* ---------- הפעלה ---------- */
@@ -472,8 +552,9 @@ $('logout').onclick = logout;
   try{ tok = JSON.parse(store.get('tok') || 'null'); }catch(e){ tok = null; }
   try{ await handleCallback(); }catch(e){ toast('ההתחברות נכשלה: ' + e.message); }
   if (!tok){ $('loginView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
-  $('appView').classList.remove('hidden'); $('bar').classList.remove('hidden'); $('logout').classList.remove('hidden');
-  loadSDK(); refreshDevices(); poll(); loadPlaylists();
+  $('appView').classList.remove('hidden'); $('bar').classList.remove('hidden');
+  if (FULL) $('logout').classList.remove('hidden');
+  loadSDK(); refreshDevices(); poll(); selectTab('kids');
   setInterval(poll, 3000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
 })();
 </script>
