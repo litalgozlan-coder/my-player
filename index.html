@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="הנגן שלי">
+<title>הנגן שלי</title>
+<style>
+:root{
+  --bg:#f6f5f2;--card:#ffffff;--text:#1d1d1f;--muted:#6b6b70;--line:#e3e1dc;
+  --accent:#1f7a4d;--accent-text:#ffffff;--hover:#efede8;--danger:#b3261e;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141416;--card:#1e1e21;--text:#f2f2f2;--muted:#a0a0a6;--line:#2e2e33;
+    --accent:#3bb273;--accent-text:#0d1f15;--hover:#27272b;--danger:#ff8a80;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141416;--card:#1e1e21;--text:#f2f2f2;--muted:#a0a0a6;--line:#2e2e33;
+  --accent:#3bb273;--accent-text:#0d1f15;--hover:#27272b;--danger:#ff8a80;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"Segoe UI","Arial Hebrew",Arial,system-ui,sans-serif;font-size:16px;line-height:1.45;
+  padding-bottom:190px}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+header h1{font-size:22px;margin:0;flex:1}
+.btn{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+select{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;max-width:100%}
+.tabs{display:flex;gap:6px;margin:8px 0 14px;border-bottom:1px solid var(--line)}
+.tab{background:none;border:none;padding:10px 12px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent}
+.tab.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+.search{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);margin-bottom:12px}
+.list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:last-child{border-bottom:none}
+.row:hover{background:var(--hover)}
+.row .n{color:var(--muted);width:24px;text-align:center;font-size:13px;flex:none}
+.row .t{flex:1;min-width:0}
+.row .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t span{display:block;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .d{color:var(--muted);font-size:13px;flex:none;direction:ltr}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.more{display:block;margin:12px auto}
+.login{text-align:center;padding:60px 16px}
+.login p{color:var(--muted)}
+.note{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;color:var(--muted);font-size:14px}
+.bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px 14px}
+.bar .in{max-width:760px;margin:0 auto}
+.now b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now span{color:var(--muted);font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog{display:flex;align-items:center;gap:8px;direction:ltr;margin:8px 0 6px;font-size:12px;color:var(--muted)}
+.prog input{flex:1;accent-color:var(--accent)}
+.ctrl{display:flex;align-items:center;justify-content:center;gap:10px;direction:ltr;flex-wrap:wrap}
+.ctrl .c{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:16px}
+.ctrl .c:hover{background:var(--hover)}
+.ctrl .c.big{width:54px;height:54px;background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-size:20px}
+.ctrl .c.on{color:var(--accent);border-color:var(--accent)}
+.vol{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.vol input{width:90px;accent-color:var(--accent)}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);
+  padding:10px 16px;border-radius:10px;font-size:14px;max-width:90vw;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+.toast.show{opacity:1}
+.foot{color:var(--muted);font-size:12px;text-align:center;margin-top:18px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<div class="wrap">
+  <header>
+    <h1>הנגן שלי</h1>
+    <select id="devices" title="איפה לנגן"><option value="">טוען מכשירים…</option></select>
+    <button class="btn" id="refreshDev" title="רענון רשימת המכשירים">↻</button>
+    <button class="btn hidden" id="logout">יציאה</button>
+  </header>
+
+  <div id="loginView" class="login hidden">
+    <p>כדי לנגן צריך להתחבר פעם אחת לחשבון הספוטיפיי שלך.</p>
+    <button class="btn primary" id="loginBtn">התחברות לספוטיפיי</button>
+  </div>
+
+  <div id="fileView" class="note hidden">
+    הקובץ נפתח ישירות מהתיקייה, ובצורה הזאת ההתחברות לספוטיפיי לא תעבוד.
+    צריך להפעיל אותו דרך קובץ ההפעלה start-windows (או start-mac במק) שבתיקייה, ואז הוא ייפתח בכתובת http://127.0.0.1:8080
+  </div>
+
+  <div id="appView" class="hidden">
+    <div id="sdkNote" class="note hidden"></div>
+    <div class="tabs">
+      <button class="tab on" data-tab="search">חיפוש</button>
+      <button class="tab" data-tab="playlists">הרשימות שלי</button>
+      <button class="tab" data-tab="liked">שירים שאהבתי</button>
+      <button class="tab" data-tab="shows">פודקאסטים</button>
+    </div>
+
+    <section id="tab-search">
+      <input class="search" id="q" type="search" placeholder="חיפוש שיר או אמן…" autocomplete="off">
+      <div class="list" id="searchList"><div class="empty">הקלידי משהו כדי לחפש</div></div>
+      <button class="btn more hidden" id="searchMore">עוד תוצאות</button>
+    </section>
+
+    <section id="tab-playlists" class="hidden">
+      <div class="list" id="plList"><div class="empty">טוען…</div></div>
+      <button class="btn more hidden" id="plMore">עוד רשימות</button>
+    </section>
+
+    <section id="tab-liked" class="hidden">
+      <div class="list" id="likedList"><div class="empty">טוען…</div></div>
+      <button class="btn more hidden" id="likedMore">עוד שירים</button>
+    </section>
+
+    <section id="tab-shows" class="hidden">
+      <button class="btn hidden" id="showBack" style="margin-bottom:10px">→ חזרה לפודקאסטים</button>
+      <div class="list" id="showList"><div class="empty">טוען…</div></div>
+      <button class="btn more hidden" id="showMore">עוד</button>
+    </section>
+
+    <div class="foot">מבוסס על Spotify · תצוגת טקסט בלבד</div>
+  </div>
+</div>
+
+<div class="bar hidden" id="bar">
+  <div class="in">
+    <div class="now"><b id="nowTitle">לא מתנגן כרגע</b><span id="nowSub">&nbsp;</span></div>
+    <div class="prog"><span id="tCur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0"><span id="tDur">0:00</span></div>
+    <div class="ctrl">
+      <button class="c" id="shuf" title="ערבוב">⤮</button>
+      <button class="c" id="prev" title="הקודם">⏮</button>
+      <button class="c big" id="pp" title="נגן / עצור">▶</button>
+      <button class="c" id="next" title="הבא">⏭</button>
+      <div class="vol"><span>🔉</span><input type="range" id="vol" min="0" max="100" value="70"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
+const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
+const REDIRECT_URI = location.origin + BASE + 'callback';
+const SCOPES = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative user-library-read';
+const TOKEN_URL = 'https://accounts.spotify.com/api/token';
+const API = 'https://api.spotify.com/v1';
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = ms => { ms = Math.max(0, ms|0); const s = Math.floor(ms/1000); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); };
+const artists = a => (a || []).map(x => x.name).join(', ');
+
+let toastT;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'), 4500); }
+
+/* ---------- התחברות (PKCE) ---------- */
+let tok = null;
+function randStr(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; return Array.from(a, x=>c[x%c.length]).join(''); }
+async function sha256b64url(s){
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return btoa(String.fromCharCode(...new Uint8Array(h))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function login(){
+  const verifier = randStr(64);
+  store.set('pkce_verifier', verifier);
+  const p = new URLSearchParams({ client_id:CLIENT_ID, response_type:'code', redirect_uri:REDIRECT_URI,
+    scope:SCOPES, code_challenge_method:'S256', code_challenge: await sha256b64url(verifier) });
+  location.href = 'https://accounts.spotify.com/authorize?' + p;
+}
+function saveToken(j){
+  tok = { access:j.access_token, refresh:j.refresh_token || (tok && tok.refresh), exp: Date.now() + ((j.expires_in||3600) - 60)*1000 };
+  store.set('tok', JSON.stringify(tok));
+}
+async function handleCallback(){
+  const p = new URLSearchParams(location.search);
+  if (!p.get('code') && !p.get('error')) return;
+  history.replaceState(null, '', BASE);
+  if (p.get('error')) throw new Error(p.get('error') === 'access_denied' ? 'ההתחברות בוטלה' : p.get('error'));
+  const body = new URLSearchParams({ client_id:CLIENT_ID, grant_type:'authorization_code', code:p.get('code'),
+    redirect_uri:REDIRECT_URI, code_verifier: store.get('pkce_verifier') || '' });
+  const r = await fetch(TOKEN_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error_description || j.error || 'שגיאה');
+  saveToken(j);
+  store.del('pkce_verifier');
+}
+let refreshing = null;
+function refresh(){
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    const body = new URLSearchParams({ grant_type:'refresh_token', refresh_token: tok && tok.refresh, client_id:CLIENT_ID });
+    const r = await fetch(TOKEN_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok){ logout(); throw new Error('צריך להתחבר מחדש'); }
+    saveToken(j);
+  })().finally(() => { refreshing = null; });
+  return refreshing;
+}
+async function getToken(){ if (!tok) return null; if (Date.now() > tok.exp) await refresh(); return tok.access; }
+function logout(){ store.del('tok'); tok = null; location.replace(BASE); }
+
+/* ---------- קריאות ל-API ---------- */
+async function api(path, opts = {}, retry = true){
+  const { method='GET', body, query } = opts;
+  const t = await getToken();
+  let url = path.startsWith('http') ? path : API + path;
+  if (query) url += '?' + new URLSearchParams(query);
+  const headers = { Authorization: 'Bearer ' + t };
+  if (body) headers['Content-Type'] = 'application/json';
+  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401 && retry){ await refresh(); return api(path, opts, false); }
+  if (r.status === 429){ throw Object.assign(new Error('יותר מדי בקשות, נסי שוב בעוד רגע'), {status:429}); }
+  const text = await r.text();
+  let j = null; try { j = text ? JSON.parse(text) : null; } catch(e) {}
+  if (!r.ok){
+    const e = new Error((j && j.error && j.error.message) || ('שגיאה ' + r.status));
+    e.status = r.status; e.reason = j && j.error && j.error.reason; throw e;
+  }
+  return j;
+}
+
+/* ---------- נגן הדפדפן ---------- */
+let player = null, localDeviceId = null, currentDeviceId = null;
+function sdkNote(msg){ const n=$('sdkNote'); n.textContent=msg; n.classList.remove('hidden'); }
+function loadSDK(){
+  window.onSpotifyWebPlaybackSDKReady = () => {
+    player = new Spotify.Player({ name:'הנגן שלי', getOAuthToken: cb => getToken().then(cb), volume:0.7 });
+    player.addListener('ready', ({device_id}) => {
+      localDeviceId = device_id;
+      if (!currentDeviceId) currentDeviceId = device_id;
+      refreshDevices();
+    });
+    player.addListener('not_ready', () => { refreshDevices(); });
+    player.addListener('initialization_error', () => {
+      sdkNote('הדפדפן הזה לא יכול לנגן בעצמו (כך זה בדפדפני טלפון). בחרי למעלה מכשיר אחר, למשל אפליקציית ספוטיפיי בטלפון, והנגן ישלוט בו מכאן.');
+    });
+    player.addListener('authentication_error', () => { toast('צריך להתחבר מחדש'); });
+    player.addListener('account_error', () => { sdkNote('הנגן בדפדפן דורש מנוי Spotify Premium.'); });
+    player.addListener('playback_error', ({message}) => toast('שגיאת ניגון: ' + message));
+    player.addListener('player_state_changed', () => pollSoon());
+    player.connect();
+  };
+  const s = document.createElement('script');
+  s.src = 'https://sdk.scdn.co/spotify-player.js';
+  document.head.appendChild(s);
+}
+
+/* ---------- מכשירים ---------- */
+async function refreshDevices(){
+  try{
+    const j = await api('/me/player/devices');
+    const devs = (j && j.devices) || [];
+    const active = devs.find(d => d.is_active);
+    if (active) currentDeviceId = active.id;
+    else if (!currentDeviceId && localDeviceId) currentDeviceId = localDeviceId;
+    const sel = $('devices');
+    sel.innerHTML = devs.length
+      ? devs.map(d => `<option value="${esc(d.id)}">${d.id===localDeviceId ? 'המחשב הזה (הנגן שלי)' : esc(d.name)}</option>`).join('')
+      : '<option value="">אין מכשירים זמינים</option>';
+    if (currentDeviceId) sel.value = currentDeviceId;
+  }catch(e){ toast(e.message); }
+}
+$('devices').addEventListener('change', async e => {
+  const id = e.target.value; if (!id) return;
+  currentDeviceId = id;
+  try{ await api('/me/player', { method:'PUT', body:{ device_ids:[id], play:false } }); toast('המכשיר הוחלף'); }
+  catch(err){ toast(err.message); }
+  pollSoon();
+});
+$('refreshDev').onclick = refreshDevices;
+
+/* ---------- ניגון ---------- */
+async function play(body){
+  if (player && player.activateElement) { try{ player.activateElement(); }catch(e){} }
+  try{
+    await api('/me/player/play', { method:'PUT', query: currentDeviceId ? { device_id: currentDeviceId } : undefined, body });
+  }catch(e){
+    if (e.status === 404) toast('לא נמצא מכשיר פעיל. בחרי מכשיר מהרשימה למעלה.');
+    else if (e.status === 403) toast('הפעולה לא אפשרית כרגע (' + e.message + ')');
+    else toast(e.message);
+  }
+  pollSoon();
+}
+async function ctl(path, method, query){
+  try{ await api(path, { method, query: Object.assign({}, query || {}, currentDeviceId ? { device_id: currentDeviceId } : {}) }); }
+  catch(e){ toast(e.status === 404 ? 'בחרי מכשיר מהרשימה למעלה' : e.message); }
+  pollSoon();
+}
+
+/* ---------- מצב נוכחי ---------- */
+let st = null, stAt = 0, pollT = null, seeking = false;
+async function poll(){
+  try{ st = await api('/me/player', { query:{ additional_types:'track,episode' } }); stAt = Date.now(); render(); }
+  catch(e){}
+}
+function pollSoon(){ clearTimeout(pollT); pollT = setTimeout(poll, 600); }
+function render(){
+  const it = st && st.item;
+  $('nowTitle').textContent = it ? it.name : 'לא מתנגן כרגע';
+  $('nowSub').textContent = it ? (artists(it.artists) || (it.show && it.show.name) || '') + (st.device ? '  ·  ' + (st.device.id===localDeviceId ? 'המחשב הזה' : st.device.name) : '') : ' ';
+  $('pp').textContent = st && st.is_playing ? '⏸' : '▶';
+  $('shuf').classList.toggle('on', !!(st && st.shuffle_state));
+  if (st && st.device){
+    if (st.device.id) { currentDeviceId = st.device.id; if ($('devices').querySelector(`option[value="${CSS.escape(st.device.id)}"]`)) $('devices').value = st.device.id; }
+    if (st.device.volume_percent != null && document.activeElement !== $('vol')) $('vol').value = st.device.volume_percent;
+  }
+  tick();
+}
+function tick(){
+  const it = st && st.item; if (seeking) return;
+  const dur = it ? it.duration_ms : 0;
+  let pos = st ? (st.progress_ms || 0) : 0;
+  if (st && st.is_playing) pos += Date.now() - stAt;
+  pos = Math.min(pos, dur);
+  $('tCur').textContent = fmt(pos); $('tDur').textContent = fmt(dur);
+  $('seek').value = dur ? Math.round(pos / dur * 1000) : 0;
+}
+$('pp').onclick = () => {
+  if (player && player.activateElement) { try{ player.activateElement(); }catch(e){} }
+  st && st.is_playing ? ctl('/me/player/pause','PUT') : ctl('/me/player/play','PUT');
+};
+$('next').onclick = () => ctl('/me/player/next','POST');
+$('prev').onclick = () => ctl('/me/player/previous','POST');
+$('shuf').onclick = () => ctl('/me/player/shuffle','PUT',{ state: String(!(st && st.shuffle_state)) });
+$('seek').addEventListener('input', () => { seeking = true; const it = st && st.item; if (it) $('tCur').textContent = fmt($('seek').value/1000*it.duration_ms); });
+$('seek').addEventListener('change', () => {
+  seeking = false; const it = st && st.item; if (!it) return;
+  ctl('/me/player/seek','PUT',{ position_ms: String(Math.round($('seek').value/1000*it.duration_ms)) });
+});
+let volT;
+$('vol').addEventListener('input', () => { clearTimeout(volT); volT = setTimeout(() => ctl('/me/player/volume','PUT',{ volume_percent: $('vol').value }), 300); });
+
+/* ---------- רשימות שירים ---------- */
+function rowsHTML(tracks, start){
+  return tracks.map((t, i) => `<div class="row" data-i="${start+i}"><div class="n">${start+i+1}</div>
+    <div class="t"><b>${esc(t.name)}</b><span>${esc(artists(t.artists))}${t.album && t.album.name ? ' · ' + esc(t.album.name) : ''}</span></div>
+    <div class="d">${fmt(t.duration_ms)}</div></div>`).join('');
+}
+
+/* חיפוש */
+let sQ = '', sOff = 0, sTracks = [], sT;
+async function search(more){
+  const q = $('q').value.trim();
+  if (!more){ sQ = q; sOff = 0; sTracks = []; }
+  if (!sQ){ $('searchList').innerHTML = '<div class="empty">הקלידי משהו כדי לחפש</div>'; $('searchMore').classList.add('hidden'); return; }
+  try{
+    const j = await api('/search', { query:{ q:sQ, type:'track', limit:'10', offset:String(sOff) } });
+    if (sQ !== $('q').value.trim()) return;
+    const items = ((j.tracks && j.tracks.items) || []).filter(Boolean);
+    sTracks = sTracks.concat(items); sOff += 10;
+    $('searchList').innerHTML = sTracks.length ? rowsHTML(sTracks, 0) : '<div class="empty">לא נמצאו תוצאות</div>';
+    $('searchMore').classList.toggle('hidden', !(j.tracks && j.tracks.next) || items.length === 0);
+  }catch(e){ toast(e.message); }
+}
+$('q').addEventListener('input', () => { clearTimeout(sT); sT = setTimeout(() => search(false), 400); });
+$('searchMore').onclick = () => search(true);
+$('searchList').addEventListener('click', e => {
+  const r = e.target.closest('.row'); if (!r) return;
+  play({ uris: sTracks.map(t => t.uri), offset:{ position: +r.dataset.i } });
+});
+
+/* הרשימות שלי */
+let plNext = '/me/playlists?limit=50', pls = [];
+async function loadPlaylists(){
+  if (!plNext) return;
+  try{
+    const j = await api(plNext);
+    pls = pls.concat((j.items || []).filter(Boolean)); plNext = j.next;
+    $('plList').innerHTML = pls.length ? pls.map((p, i) => {
+      const n = (p.items && p.items.total) ?? (p.tracks && p.tracks.total);
+      return `<div class="row" data-i="${i}"><div class="n">${i+1}</div><div class="t"><b>${esc(p.name)}</b>
+        <span>${n != null ? n + ' שירים' : ''}${p.owner && p.owner.display_name ? ' · ' + esc(p.owner.display_name) : ''}</span></div><div class="d">▶</div></div>`;
+    }).join('') : '<div class="empty">אין רשימות השמעה</div>';
+    $('plMore').classList.toggle('hidden', !plNext);
+  }catch(e){ $('plList').innerHTML = '<div class="empty">לא ניתן לטעון את הרשימות</div>'; toast(e.message); }
+}
+$('plMore').onclick = loadPlaylists;
+$('plList').addEventListener('click', e => {
+  const r = e.target.closest('.row'); if (!r) return;
+  play({ context_uri: pls[+r.dataset.i].uri });
+});
+
+/* שירים שאהבתי */
+let lkNext = '/me/tracks?limit=50', liked = [];
+async function loadLiked(){
+  if (!lkNext) return;
+  try{
+    const j = await api(lkNext);
+    liked = liked.concat((j.items || []).map(x => x.track || x.item).filter(Boolean)); lkNext = j.next;
+    $('likedList').innerHTML = liked.length ? rowsHTML(liked, 0) : '<div class="empty">אין עדיין שירים שאהבת</div>';
+    $('likedMore').classList.toggle('hidden', !lkNext);
+  }catch(e){ $('likedList').innerHTML = '<div class="empty">לא ניתן לטעון</div>'; toast(e.message); }
+}
+$('likedMore').onclick = loadLiked;
+$('likedList').addEventListener('click', e => {
+  const r = e.target.closest('.row'); if (!r) return;
+  const i = +r.dataset.i, from = Math.max(0, i - 0);
+  play({ uris: liked.slice(from, from + 100).map(t => t.uri) });
+});
+
+/* פודקאסטים */
+let shows = [], showNext = '/me/shows?limit=50', curShow = null, eps = [], epNext = null;
+function renderShows(){
+  $('showBack').classList.add('hidden');
+  $('showList').innerHTML = shows.length ? shows.map((s, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
+    <div class="t"><b>${esc(s.name)}</b><span>${s.total_episodes != null ? s.total_episodes + ' פרקים' : ''}${s.publisher ? ' · ' + esc(s.publisher) : ''}</span></div><div class="d">‹</div></div>`).join('')
+    : '<div class="empty">אין פודקאסטים שמורים</div>';
+  $('showMore').classList.toggle('hidden', !showNext);
+}
+async function loadShows(){
+  if (!showNext) return renderShows();
+  try{
+    const j = await api(showNext);
+    shows = shows.concat((j.items || []).map(x => x.show).filter(Boolean)); showNext = j.next;
+    renderShows();
+  }catch(e){ $('showList').innerHTML = '<div class="empty">לא ניתן לטעון</div>'; toast(e.message); }
+}
+function renderEps(){
+  $('showBack').classList.remove('hidden');
+  $('showList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(curShow.name)}</b><span>הפרקים מהחדש לישן</span></div></div>` +
+    (eps.length ? eps.map((e, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
+    <div class="t"><b>${esc(e.name)}</b><span>${esc(e.release_date || '')}</span></div><div class="d">${fmt(e.duration_ms)}</div></div>`).join('')
+    : '<div class="empty">אין פרקים</div>');
+  $('showMore').classList.toggle('hidden', !epNext);
+}
+async function loadEps(){
+  if (!epNext) return;
+  try{
+    const j = await api(epNext);
+    eps = eps.concat((j.items || []).filter(Boolean)); epNext = j.next;
+    renderEps();
+  }catch(e){ toast(e.message); }
+}
+$('showList').addEventListener('click', e => {
+  const r = e.target.closest('.row'); if (!r || r.dataset.i == null) return;
+  const i = +r.dataset.i;
+  if (!curShow){
+    curShow = shows[i]; eps = []; epNext = `/shows/${curShow.id}/episodes?limit=50&market=from_token`;
+    $('showList').innerHTML = '<div class="empty">טוען…</div>'; loadEps();
+  } else {
+    play({ uris: eps.slice(i, i + 50).map(x => x.uri) });
+  }
+});
+$('showBack').onclick = () => { curShow = null; renderShows(); };
+$('showMore').onclick = () => curShow ? loadEps() : loadShows();
+
+/* לשוניות */
+let likedLoaded = false, showsLoaded = false;
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  ['search','playlists','liked','shows'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+  if (b.dataset.tab === 'liked' && !likedLoaded){ likedLoaded = true; loadLiked(); }
+  if (b.dataset.tab === 'shows' && !showsLoaded){ showsLoaded = true; loadShows(); }
+});
+
+/* ---------- הפעלה ---------- */
+$('loginBtn').onclick = login;
+$('logout').onclick = logout;
+(async () => {
+  if (location.protocol === 'file:'){ $('fileView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
+  if (location.hostname === 'localhost'){ location.replace(location.href.replace('//localhost', '//127.0.0.1')); return; }
+  try{ tok = JSON.parse(store.get('tok') || 'null'); }catch(e){ tok = null; }
+  try{ await handleCallback(); }catch(e){ toast('ההתחברות נכשלה: ' + e.message); }
+  if (!tok){ $('loginView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
+  $('appView').classList.remove('hidden'); $('bar').classList.remove('hidden'); $('logout').classList.remove('hidden');
+  loadSDK(); refreshDevices(); poll(); loadPlaylists();
+  setInterval(poll, 3000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
+})();
+</script>
+</body>
+</html>
