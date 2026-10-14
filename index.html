@@ -26,6 +26,8 @@
   --accent:#3bb273;--accent-text:#0d1f15;--hover:#27272b;--danger:#ff8a80;
 }
 *{box-sizing:border-box}
+body,.row,.tab,.btn,.bar,.now,.foot,.note,.empty{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input{-webkit-user-select:text;user-select:text}
 body{margin:0;background:var(--bg);color:var(--text);
   font-family:"Segoe UI","Arial Hebrew",Arial,system-ui,sans-serif;font-size:16px;line-height:1.45;
   padding-bottom:190px}
@@ -155,7 +157,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014220450';
+const VERSION = '20261014220931';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
