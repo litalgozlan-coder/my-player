@@ -151,7 +151,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014203717';
+const VERSION = '20261014204353';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -813,7 +813,7 @@ async function checkVersion(){
   try{
     if (location.protocol === 'file:' || location.hostname === '127.0.0.1') return;
     const t = await (await fetch(BASE + 'index.html', { cache:'no-store' })).text();
-    const m = /const VERSION = '20261014203717']+)'/.exec(t);
+    const m = /^const VERSION = '(\d+)';$/m.exec(t);
     if (m && m[1] !== VERSION && store.get('reloadedFor') !== m[1]){ store.set('reloadedFor', m[1]); location.reload(); }
   }catch(e){}
 }
