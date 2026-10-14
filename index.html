@@ -152,7 +152,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014213001';
+const VERSION = '20261014213800';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -850,6 +850,19 @@ document.querySelectorAll('.tab').forEach(b => {
   b.onclick = () => selectTab(b.dataset.tab);
 });
 
+/* מי מחובר ואיזה מנוי */
+async function whoAmI(){
+  try{
+    const me = await apiRetry('/me');
+    const who = me.display_name || me.email || me.id || '';
+    const prod = (me.product || '').toLowerCase();
+    const el = document.createElement('div'); el.className = 'foot'; el.style.margin = '-6px 0 8px';
+    el.textContent = 'מחובר: ' + who + (me.email ? ' (' + me.email + ')' : '') + ' · מנוי: ' + (prod === 'premium' ? 'Premium' : prod === 'free' || prod === 'open' ? 'חינמי' : prod || 'לא ידוע');
+    $('appView').insertBefore(el, $('appView').firstChild);
+    if (prod && prod !== 'premium') sdkNote('החשבון שמחובר כאן (' + who + ') אינו Premium, ולכן הנגן לא יכול לנגן. צריך לצרף אותו למנוי Family ואז להתנתק ולהתחבר שוב.');
+  }catch(e){}
+}
+
 /* בדיקת גרסה: אם יש גרסה חדשה באתר, טוענים אותה מחדש פעם אחת */
 async function checkVersion(){
   try{
@@ -872,7 +885,7 @@ $('logout').onclick = logout;
   if (!tok){ $('loginView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
   $('appView').classList.remove('hidden'); $('bar').classList.remove('hidden');
   if (FULL) $('logout').classList.remove('hidden');
-  loadSDK(); refreshDevices(); poll(); selectTab('kids'); checkVersion();
+  loadSDK(); refreshDevices(); poll(); selectTab('kids'); checkVersion(); whoAmI();
   setInterval(poll, 8000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
 })();
 </script>
