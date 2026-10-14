@@ -364,6 +364,7 @@ async function ctl(path, method, query){
 /* ---------- מצב נוכחי ---------- */
 let st = null, stAt = 0, pollT = null, seeking = false;
 async function poll(){
+  if (document.hidden) return;
   try{ st = await api('/me/player', { query:{ additional_types:'track,episode' } }); stAt = Date.now(); render(); }
   catch(e){}
 }
@@ -485,7 +486,7 @@ async function apiRetry(path, opts, bg){
     inFlight++;
     try{ return await api(path, opts); }
     catch(e){
-      if (e.status === 429 && i < 6){ waitUntil = Date.now() + Math.max(2000, (e.retryAfter || 0) * 1000 + 500); continue; }
+      if (e.status === 429 && i < 6){ waitUntil = Date.now() + Math.max(2000, (e.retryAfter || 0) * 1000 + 500); rateLimitUI(); continue; }
       throw e;
     }finally{ inFlight--; }
   }
@@ -530,7 +531,7 @@ async function artistTracks(a, bg){
   }
   if (catalogBlocked || useSearch){
     for (const name of (a.q || [a.name])){
-      const found = await searchAll('artist:"' + name + '"', 'track', 500, bg);
+      const found = await searchAll('artist:"' + name + '"', 'track', 300, bg);
       found.filter(t => t && t.uri && (t.artists || []).some(x => ids.includes(x.id))).forEach(t => tracks.push(slim(t)));
     }
   }
@@ -609,7 +610,7 @@ async function showEpisodes(s, bg){
   }
   if (catalogBlocked || useSearch){
     const nm = norm(s.name);
-    const found = await searchAll(s.name, 'episode', 300, bg);
+    const found = await searchAll(s.name, 'episode', 200, bg);
     found.filter(e => e && e.uri && norm(e.name).includes(nm)).forEach(e => eps.push(slimEp(e, s.name)));
     eps = dedupe(eps, e => e.uri);
     eps.sort((a, b) => String(b.release_date || '').localeCompare(String(a.release_date || '')));
@@ -643,12 +644,12 @@ async function loadKids(){
     try{ const p = await apiRetry('/playlists/' + en.src.id); en.name = p.name; en.src = p; }catch(e){ en.name = 'רשימה'; }
   }
   renderEntries();
-  buildIndex();
 }
 async function openEntry(en){
   curEntry = en; kTracks = [];
   $('kidsBack').classList.remove('hidden');
   $('kidsList').innerHTML = '<div class="empty">טוען…</div>';
+  rateLimitUI();
   pauseBg++;
   try{
     kTracks = (await entryTracks(en)).map(t => en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t);
@@ -658,82 +659,60 @@ async function openEntry(en){
   }catch(e){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את השירים<br><small dir="ltr">' + esc(e.message) + '</small></div>'; }
   finally{ pauseBg--; }
 }
-let kIdx = { tracks:[], eps:[] }, kDone = false, kProg = { n:0, t:0 }, kSeen = new Set(), kErr = '';
-function buildIndex(){
-  if (kBuilding || kDone) return kBuilding;
-  kBuilding = (async () => {
-    const ents = kEntries.length ? kEntries : entryList();
-    kProg = { n:0, t: ents.length + 1 };
-    for (const en of ents){
-      try{
-        (await entryTracks(en, true)).forEach(t => { if (!kSeen.has(t.uri)){ kSeen.add(t.uri); kIdx.tracks.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t); } });
-      }catch(e){ kErr = e.message || String(e); }
-      kProg.n++; onIndexProgress();
-    }
-    try{
-      const shows = await approvedShows(true); kProg.t += shows.length; kProg.n++; onIndexProgress();
-      for (const s of shows){ try{ (await showEpisodes(s, true)).forEach(e => kIdx.eps.push(e)); }catch(e){} kProg.n++; onIndexProgress(); }
-    }catch(e){}
-    kDone = true; onIndexProgress();
-  })().finally(() => { kBuilding = null; });
-  return kBuilding;
+/* חיפוש: ישירות בספוטיפיי, מסונן לאמנים ולפודקאסטים המאושרים */
+const APPROVED_ARTIST_IDS = new Set(ALLOWED.artists.flatMap(a => a.ids || [a.id]));
+const APPROVED_TRACK_IDS = new Set(ALLOWED.tracks.map(t => t.id));
+let approvedShowNames = null;
+let rlTimer = null;
+function rateLimitUI(){
+  const st = $('kStatus'); if (!st) return;
+  const left = Math.ceil((waitUntil - Date.now()) / 1000);
+  if (left > 0){ st.textContent = `ספוטיפיי מבקש להמתין… ממשיך בעוד ${left} שניות`; if (!rlTimer) rlTimer = setInterval(rateLimitUI, 1000); }
+  else { st.textContent = ''; if (rlTimer){ clearInterval(rlTimer); rlTimer = null; } }
 }
-function onIndexProgress(){
-  const st = $('kStatus');
-  if (st) st.textContent = kDone ? (kIdx.tracks.length ? '' : 'לא נטען אף שיר' + (kErr ? ': ' + kErr : '')) : `טוען את כל השירים ברקע… ${kProg.n}/${kProg.t}`;
-  if (kDone && !kIdx.tracks.length) diag();
-  if (norm($('kq').value)) kidsSearch();
-}
-let diagRan = false;
-async function diag(){
-  if (diagRan) return; diagRan = true;
-  const tests = [
-    ['me', '/me'],
-    ['artist', '/artists/13Bny64Z0lG2BQFHhrMTPb'],
-    ['artist albums', '/artists/13Bny64Z0lG2BQFHhrMTPb/albums', { include_groups:'album,single', limit:'5' }],
-    ['albums', '/albums', { ids:'3zdvjrkYyFilN9XdVwJvYZ' }],
-    ['album tracks', '/albums/3zdvjrkYyFilN9XdVwJvYZ/tracks'],
-    ['tracks', '/tracks', { ids:'3DTHsQnfuQVESYAYv0fybQ' }],
-    ['shows', '/shows', { ids:'4HfDVNqt8DOyFG4qsNlKrF' }],
-    ['episodes', '/shows/4HfDVNqt8DOyFG4qsNlKrF/episodes', { limit:'2' }],
-    ['search', '/search', { q:'בן צור', type:'track', limit:'1' }]
-  ];
-  const out = [];
-  for (const [name, path, query] of tests){
-    try{ const j = await api(path, { query }); out.push('✅ ' + name + (j && j.items ? ' (' + j.items.length + ')' : '')); }
-    catch(e){ out.push('❌ ' + name + ': ' + e.message); }
-  }
-  const d = document.createElement('div'); d.className = 'note'; d.setAttribute('dir', 'ltr'); d.style.fontSize = '12px'; d.style.whiteSpace = 'pre-wrap';
-  d.textContent = 'בדיקת חיבור לספוטיפיי:\n' + out.join('\n');
-  $('tab-kids').insertBefore(d, $('kidsList'));
-}
-let kRes = { tracks:[], eps:[] };
 function epRowsHTML(eps, start){
   return eps.map((e, i) => `<div class="row" data-ep="${start+i}"><div class="n">🎙</div>
     <div class="t"><b>${esc(e.name)}</b><span>${esc(e.show || '')}${e.release_date ? ' · ' + esc(e.release_date) : ''}</span></div>
     <div class="d">${fmt(e.duration_ms)}</div></div>`).join('');
 }
-function kidsSearch(){
+let kRes = { tracks:[], eps:[] }, kSeq = 0;
+async function kidsSearch(){
   const q = norm($('kq').value);
   if (!q){ if (!curEntry) renderEntries(); return; }
   curEntry = null; $('kidsBack').classList.add('hidden');
-  if (!kDone) buildIndex();
+  const seq = ++kSeq;
   const words = q.split(' ');
-  const hit = s => { const n = norm(s); return words.every(w => n.includes(w)); };
-  kRes = {
-    tracks: kIdx.tracks.filter(t => hit(t.name + ' ' + (t.who || '') + ' ' + artists(t.artists) + ' ' + (t.album && t.album.name || ''))).slice(0, 100),
-    eps: kIdx.eps.filter(e => hit(e.name + ' ' + (e.show || ''))).slice(0, 100)
-  };
-  const foot = kDone ? '' : `<div class="empty">עדיין טוען שירים ברקע (${kProg.n}/${kProg.t}), התוצאות יתעדכנו לבד…</div>`;
-  $('kidsList').innerHTML = ((kRes.tracks.length || kRes.eps.length)
-    ? rowsHTML(kRes.tracks, 0) + epRowsHTML(kRes.eps, 0)
-    : (kDone ? '<div class="empty">לא נמצא כלום בחיפוש הזה</div>' : '')) + foot;
+  const hit = str => { const n = norm(str); return words.every(w => n.includes(w)); };
+  // אמנים מאושרים ששמם מתאים לחיפוש (לפי השם בעברית)
+  const artistRows = kEntries.filter(en => en.type === 'artist' && hit(en.name));
+  $('kidsList').innerHTML = (artistRows.length ? artistRows.map(en => `<div class="row" data-art="${kEntries.indexOf(en)}"><div class="n">👤</div><div class="t"><b>${esc(en.name)}</b><span>כל השירים</span></div><div class="d">‹</div></div>`).join('') : '')
+    + '<div class="empty">מחפש בספוטיפיי…</div>';
+  try{
+    if (!approvedShowNames){ try{ approvedShowNames = (await approvedShows()).map(x => norm(x.name)).filter(Boolean); }catch(e){ approvedShowNames = []; } }
+    const j = await apiRetry('/search', { query:{ q: $('kq').value.trim(), type:'track,episode', limit:'50' } });
+    if (seq !== kSeq) return;
+    const tracks = ((j.tracks && j.tracks.items) || []).filter(t => t && t.uri &&
+      ((t.artists || []).some(a => APPROVED_ARTIST_IDS.has(a.id)) || APPROVED_TRACK_IDS.has(t.id))).map(t => {
+        const en = ALLOWED.artists.find(a => (a.ids || [a.id]).some(id => (t.artists || []).some(x => x.id === id)));
+        return Object.assign(slim(t), en ? { who: en.name } : {});
+      });
+    const eps = ((j.episodes && j.episodes.items) || []).filter(e => e && e.uri && approvedShowNames.some(nm => nm && norm(e.name).includes(nm)))
+      .map(e => slimEp(e, (approvedShowNames.find(nm => norm(e.name).includes(nm)) || '')));
+    kRes = { tracks, eps };
+    $('kidsList').innerHTML = (artistRows.length ? artistRows.map(en => `<div class="row" data-art="${kEntries.indexOf(en)}"><div class="n">👤</div><div class="t"><b>${esc(en.name)}</b><span>כל השירים</span></div><div class="d">‹</div></div>`).join('') : '')
+      + rowsHTML(tracks, 0) + epRowsHTML(eps, 0)
+      + (!artistRows.length && !tracks.length && !eps.length ? '<div class="empty">לא נמצא כלום בחיפוש הזה</div>' : '');
+  }catch(e){
+    if (seq !== kSeq) return;
+    $('kidsList').innerHTML = '<div class="empty">החיפוש נכשל<br><small dir="ltr">' + esc(e.message) + '</small></div>';
+  }
 }
 let kqT;
-$('kq').addEventListener('input', () => { clearTimeout(kqT); kqT = setTimeout(kidsSearch, 350); });
+$('kq').addEventListener('input', () => { clearTimeout(kqT); kqT = setTimeout(kidsSearch, 600); });
 $('kidsList').addEventListener('click', e => {
   const r = e.target.closest('.row'); if (!r) return;
   if (r.dataset.ep != null){ play({ uris: [kRes.eps[+r.dataset.ep].uri] }); return; }
+  if (r.dataset.art != null){ $('kq').value = ''; openEntry(kEntries[+r.dataset.art]); return; }
   if (r.dataset.i == null) return;
   const i = +r.dataset.i;
   if (norm($('kq').value)){ play({ uris: kRes.tracks.slice(i, i + 50).map(x => x.uri) }); return; }
@@ -822,7 +801,7 @@ $('logout').onclick = logout;
   $('appView').classList.remove('hidden'); $('bar').classList.remove('hidden');
   if (FULL) $('logout').classList.remove('hidden');
   loadSDK(); refreshDevices(); poll(); selectTab('kids');
-  setInterval(poll, 5000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
+  setInterval(poll, 8000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
 })();
 </script>
 </body>
