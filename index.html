@@ -157,7 +157,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014221825';
+const VERSION = '20261014221943';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -509,6 +509,7 @@ $('likedList').addEventListener('click', e => {
 /* ---------- תוכן מאושר ---------- */
 const norm = s => String(s || '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(/["'״׳]/g, '').replace(/\s+/g, ' ').trim();
 const TTL = { art: 24*3600e3, show: 3*3600e3, list: 24*3600e3 };
+const CV = 'v3_';
 function cget(k, ttl){ try{ const v = JSON.parse(store.get(k) || 'null'); return v && Date.now() - v.t < ttl ? v.d : null; }catch(e){ return null; } }
 function cset(k, d){ store.set(k, JSON.stringify({ t: Date.now(), d })); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -565,7 +566,7 @@ async function searchAll(q, type, max, bg){
 }
 
 async function artistTracks(a, bg){
-  const ids = a.ids || [a.id], k = 'art_' + ids.join('_');
+  const ids = a.ids || [a.id], k = CV + 'art_' + ids.join('_');
   const c = cget(k, TTL.art); if (c) return c;
   let tracks = [], useSearch = false;
   if (!catalogBlocked){
@@ -584,7 +585,7 @@ async function artistTracks(a, bg){
   }
   if (catalogBlocked || useSearch){
     for (const name of (a.q || [a.name])){
-      const found = await searchAll('artist:"' + name + '"', 'track', 200, bg);
+      const found = await searchAll('artist:"' + name + '"', 'track', 400, bg);
       found.filter(t => t && t.uri && (t.artists || []).some(x => ids.includes(x.id))).forEach(t => tracks.push(slim(t)));
     }
   }
@@ -593,7 +594,7 @@ async function artistTracks(a, bg){
   return tracks;
 }
 async function playlistTracks(p){
-  const k = 'pl_' + p.id, c = cget(k, TTL.art); if (c) return c;
+  const k = CV + 'pl_' + p.id, c = cget(k, TTL.art); if (c) return c;
   let tracks = [], next = `/playlists/${p.id}/tracks?limit=100`;
   while (next && tracks.length < 500){
     let j;
@@ -605,7 +606,7 @@ async function playlistTracks(p){
 }
 async function singleTracks(bg){
   if (!ALLOWED.tracks.length) return [];
-  const ids = ALLOWED.tracks.map(t => t.id), k = 'tr_' + ids.join('_'), c = cget(k, TTL.art); if (c) return c;
+  const ids = ALLOWED.tracks.map(t => t.id), k = CV + 'tr_' + ids.join('_'), c = cget(k, TTL.art); if (c) return c;
   let tracks = [], useSearch = false;
   if (!catalogBlocked){
     try{
@@ -628,7 +629,7 @@ async function singleTracks(bg){
   return tracks;
 }
 async function approvedShows(bg){
-  const c = cget('shows_ok', TTL.list); if (c) return c;
+  const c = cget(CV + 'shows_ok', TTL.list); if (c) return c;
   const map = new Map();
   const want = new Set(ALLOWED.shows);
   const okPub = s => ALLOWED.publishers.some(p => norm(s.publisher) === norm(p));
@@ -649,14 +650,14 @@ async function approvedShows(bg){
     try{ (await searchAll(pub, 'show', 100, bg)).forEach(add); }catch(e){}
   }
   const list = [...map.values()].map(s => ({ id:s.id, name:s.name, publisher:s.publisher, total_episodes:s.total_episodes }));
-  if (list.length) cset('shows_ok', list);
+  if (list.length) cset(CV + 'shows_ok', list);
   return list;
 }
 const stripNiqqud = x => String(x || '').replace(/[֑-ׇ]/g, '').trim();
 const byDateDesc = (a, b) => String(b.release_date || '').localeCompare(String(a.release_date || ''));
 /* פרקים של פודקאסט: טעינה הדרגתית (עד 100 בכל פעם) */
 async function showEpisodes(s, bg, more){
-  const k = 'ep_' + s.id;
+  const k = CV + 'ep_' + s.id;
   let st = cget(k, TTL.show) || { eps:[], off:0, done:false, total:null, src:null };
   if (st.done || (st.eps.length && !more)) return st;
   if (!st.src && !catalogBlocked){
@@ -750,9 +751,9 @@ function cachedTracks(){
   const out = [];
   for (const en of kEntries){
     let c = null;
-    if (en.type === 'artist') c = cget('art_' + (en.src.ids || [en.src.id]).join('_'), TTL.art);
-    else if (en.type === 'playlist' && en.src && en.src.id) c = cget('pl_' + en.src.id, TTL.art);
-    else if (en.type === 'tracks') c = cget('tr_' + ALLOWED.tracks.map(t => t.id).join('_'), TTL.art);
+    if (en.type === 'artist') c = cget(CV + 'art_' + (en.src.ids || [en.src.id]).join('_'), TTL.art);
+    else if (en.type === 'playlist' && en.src && en.src.id) c = cget(CV + 'pl_' + en.src.id, TTL.art);
+    else if (en.type === 'tracks') c = cget(CV + 'tr_' + ALLOWED.tracks.map(t => t.id).join('_'), TTL.art);
     (c || []).forEach(t => out.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t));
   }
   return out;
@@ -954,6 +955,7 @@ $('logout').onclick = logout;
   if (location.protocol === 'file:'){ $('fileView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
   if (location.hostname === 'localhost'){ location.replace(location.href.replace('//localhost', '//127.0.0.1')); return; }
   if (new URLSearchParams(location.search).get('logout')){ store.del('tok'); history.replaceState(null, '', BASE); toast('החשבון נותק. אפשר להתחבר עם חשבון אחר.'); }
+  try{ Object.keys(localStorage).forEach(k => { if (/^(art_|pl_|tr_|ep_|shows_ok|catalogBlocked)/.test(k)) localStorage.removeItem(k); }); }catch(e){}
   try{ tok = JSON.parse(store.get('tok') || 'null'); }catch(e){ tok = null; }
   try{ await handleCallback(); }catch(e){ toast('ההתחברות נכשלה: ' + e.message); }
   if (!tok){ $('loginView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
