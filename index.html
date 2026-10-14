@@ -151,6 +151,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
+const VERSION = '20261014203717';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -807,6 +808,16 @@ document.querySelectorAll('.tab').forEach(b => {
   b.onclick = () => selectTab(b.dataset.tab);
 });
 
+/* בדיקת גרסה: אם יש גרסה חדשה באתר, טוענים אותה מחדש פעם אחת */
+async function checkVersion(){
+  try{
+    if (location.protocol === 'file:' || location.hostname === '127.0.0.1') return;
+    const t = await (await fetch(BASE + 'index.html', { cache:'no-store' })).text();
+    const m = /const VERSION = '20261014203717']+)'/.exec(t);
+    if (m && m[1] !== VERSION && store.get('reloadedFor') !== m[1]){ store.set('reloadedFor', m[1]); location.reload(); }
+  }catch(e){}
+}
+
 /* ---------- הפעלה ---------- */
 $('loginBtn').onclick = login;
 $('logout').onclick = logout;
@@ -818,7 +829,7 @@ $('logout').onclick = logout;
   if (!tok){ $('loginView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
   $('appView').classList.remove('hidden'); $('bar').classList.remove('hidden');
   if (FULL) $('logout').classList.remove('hidden');
-  loadSDK(); refreshDevices(); poll(); selectTab('kids');
+  loadSDK(); refreshDevices(); poll(); selectTab('kids'); checkVersion();
   setInterval(poll, 8000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
 })();
 </script>
