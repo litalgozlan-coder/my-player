@@ -248,9 +248,14 @@ function refresh(){
   if (refreshing) return refreshing;
   refreshing = (async () => {
     const body = new URLSearchParams({ grant_type:'refresh_token', refresh_token: tok && tok.refresh, client_id:CLIENT_ID });
-    const r = await fetch(TOKEN_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
-    const j = await r.json().catch(()=>({}));
-    if (!r.ok){ logout(); throw new Error('צריך להתחבר מחדש'); }
+    let r, j;
+    try{ r = await fetch(TOKEN_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body }); }
+    catch(e){ throw new Error('אין חיבור לאינטרנט כרגע'); }
+    j = await r.json().catch(()=>({}));
+    if (!r.ok){
+      if (r.status === 400 || r.status === 401){ logout(); throw new Error('צריך להתחבר מחדש'); }
+      throw new Error('ספוטיפיי לא זמין כרגע (' + r.status + '), נסי שוב בעוד רגע');
+    }
     saveToken(j);
   })().finally(() => { refreshing = null; });
   return refreshing;
