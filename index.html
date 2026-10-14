@@ -105,6 +105,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 
     <section id="tab-kids" class="hidden">
       <input class="search" id="kq" type="search" placeholder="חיפוש שיר, זמר או פרק…" autocomplete="off">
+      <div id="kStatus" class="foot" style="margin:-6px 0 10px"></div>
       <button class="btn hidden" id="kidsBack" style="margin-bottom:10px">→ חזרה לרשימה</button>
       <div class="list" id="kidsList"><div class="empty">טוען…</div></div>
     </section>
@@ -396,7 +397,7 @@ $('vol').addEventListener('input', () => { clearTimeout(volT); volT = setTimeout
 /* ---------- רשימות שירים ---------- */
 function rowsHTML(tracks, start){
   return tracks.map((t, i) => `<div class="row" data-i="${start+i}"><div class="n">${start+i+1}</div>
-    <div class="t"><b>${esc(t.name)}</b><span>${esc(artists(t.artists))}${t.album && t.album.name ? ' · ' + esc(t.album.name) : ''}</span></div>
+    <div class="t"><b>${esc(t.name)}</b><span>${esc(t.who || artists(t.artists))}${t.album && t.album.name ? ' · ' + esc(t.album.name) : ''}</span></div>
     <div class="d">${fmt(t.duration_ms)}</div></div>`).join('');
 }
 
@@ -487,12 +488,16 @@ async function artistTracks(a){
   }
   albums = dedupe(albums, x => x.name);
   let tracks = [];
+  let failed = 0;
   for (let i = 0; i < albums.length; i += 20){
-    const j = await apiRetry('/albums', { query:{ ids: albums.slice(i, i + 20).map(x => x.id).join(','), market:'from_token' } });
-    (j.albums || []).filter(Boolean).forEach(al => ((al.tracks && al.tracks.items) || []).filter(t => t && t.uri).forEach(t => tracks.push(slim(t, al.name))));
+    try{
+      const j = await apiRetry('/albums', { query:{ ids: albums.slice(i, i + 20).map(x => x.id).join(','), market:'from_token' } });
+      (j.albums || []).filter(Boolean).forEach(al => ((al.tracks && al.tracks.items) || []).filter(t => t && t.uri).forEach(t => tracks.push(slim(t, al.name))));
+    }catch(e){ failed++; }
   }
   tracks = dedupe(tracks, t => t.name);
-  cset(k, tracks); return tracks;
+  if (!failed) cset(k, tracks);
+  return tracks;
 }
 async function playlistTracks(p){
   const k = 'pl_' + p.id, c = cget(k, TTL.art); if (c) return c;
@@ -543,7 +548,7 @@ async function showEpisodes(s){
 }
 
 /* לשונית "שירים": אמנים, רשימות ושירים בודדים מאושרים, וחיפוש פנימי */
-let kEntries = [], curEntry = null, kTracks = [], kIndex = null, kBuilding = null;
+let kEntries = [], curEntry = null, kTracks = [], kBuilding = null;
 function entryList(){
   const list = ALLOWED.artists.map(a => ({ type:'artist', name:a.name, src:a }))
     .concat(ALLOWED.playlists.map(id => ({ type:'playlist', name:'', src:{ id } })));
@@ -567,38 +572,43 @@ async function loadKids(){
     try{ const p = await apiRetry('/playlists/' + en.src.id); en.name = p.name; en.src = p; }catch(e){ en.name = 'רשימה'; }
   }
   renderEntries();
+  buildIndex();
 }
 async function openEntry(en){
   curEntry = en; kTracks = [];
   $('kidsBack').classList.remove('hidden');
   $('kidsList').innerHTML = '<div class="empty">טוען…</div>';
   try{
-    kTracks = await entryTracks(en);
+    kTracks = (await entryTracks(en)).map(t => en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t);
     if (curEntry !== en) return;
     $('kidsList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(en.name)}</b><span>${kTracks.length} שירים · לחיצה על שיר מנגנת אותו ואת הבאים אחריו</span></div></div>` +
       (kTracks.length ? rowsHTML(kTracks, 0) : '<div class="empty">אין שירים</div>');
   }catch(e){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את השירים</div>'; toast(e.message); }
 }
-async function buildIndex(onProgress){
-  if (kIndex) return kIndex;
-  if (kBuilding) return kBuilding;
+let kIdx = { tracks:[], eps:[] }, kDone = false, kProg = { n:0, t:0 }, kSeen = new Set();
+function buildIndex(){
+  if (kBuilding || kDone) return kBuilding;
   kBuilding = (async () => {
-    const tracks = [], eps = [];
     const ents = kEntries.length ? kEntries : entryList();
-    let n = 0, total = ents.length + 1;
+    kProg = { n:0, t: ents.length + 1 };
     for (const en of ents){
-      try{ (await entryTracks(en)).forEach(t => tracks.push(t)); }catch(e){}
-      onProgress && onProgress(++n, total);
+      try{
+        (await entryTracks(en)).forEach(t => { if (!kSeen.has(t.uri)){ kSeen.add(t.uri); kIdx.tracks.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t); } });
+      }catch(e){}
+      kProg.n++; onIndexProgress();
     }
     try{
-      const shows = await approvedShows(); total += shows.length;
-      onProgress && onProgress(++n, total);
-      for (const s of shows){ try{ (await showEpisodes(s)).forEach(e => eps.push(e)); }catch(e){} onProgress && onProgress(++n, total); }
+      const shows = await approvedShows(); kProg.t += shows.length; kProg.n++; onIndexProgress();
+      for (const s of shows){ try{ (await showEpisodes(s)).forEach(e => kIdx.eps.push(e)); }catch(e){} kProg.n++; onIndexProgress(); }
     }catch(e){}
-    kIndex = { tracks: dedupe(tracks, t => t.uri), eps };
-    return kIndex;
+    kDone = true; onIndexProgress();
   })().finally(() => { kBuilding = null; });
   return kBuilding;
+}
+function onIndexProgress(){
+  const st = $('kStatus');
+  if (st) st.textContent = kDone ? '' : `טוען את כל השירים ברקע… ${kProg.n}/${kProg.t}`;
+  if (norm($('kq').value)) kidsSearch();
 }
 let kRes = { tracks:[], eps:[] };
 function epRowsHTML(eps, start){
@@ -606,24 +616,21 @@ function epRowsHTML(eps, start){
     <div class="t"><b>${esc(e.name)}</b><span>${esc(e.show || '')}${e.release_date ? ' · ' + esc(e.release_date) : ''}</span></div>
     <div class="d">${fmt(e.duration_ms)}</div></div>`).join('');
 }
-async function kidsSearch(){
+function kidsSearch(){
   const q = norm($('kq').value);
   if (!q){ if (!curEntry) renderEntries(); return; }
   curEntry = null; $('kidsBack').classList.add('hidden');
-  if (!kIndex){
-    $('kidsList').innerHTML = '<div class="empty">טוען את כל השירים בפעם הראשונה…</div>';
-    await buildIndex((n, t) => { $('kidsList').innerHTML = `<div class="empty">טוען את כל השירים בפעם הראשונה… ${n}/${t}</div>`; });
-    if (norm($('kq').value) !== q) return;
-  }
+  if (!kDone) buildIndex();
   const words = q.split(' ');
   const hit = s => { const n = norm(s); return words.every(w => n.includes(w)); };
   kRes = {
-    tracks: kIndex.tracks.filter(t => hit(t.name + ' ' + artists(t.artists) + ' ' + (t.album && t.album.name || ''))).slice(0, 100),
-    eps: kIndex.eps.filter(e => hit(e.name + ' ' + (e.show || ''))).slice(0, 100)
+    tracks: kIdx.tracks.filter(t => hit(t.name + ' ' + (t.who || '') + ' ' + artists(t.artists) + ' ' + (t.album && t.album.name || ''))).slice(0, 100),
+    eps: kIdx.eps.filter(e => hit(e.name + ' ' + (e.show || ''))).slice(0, 100)
   };
-  $('kidsList').innerHTML = (kRes.tracks.length || kRes.eps.length)
+  const foot = kDone ? '' : `<div class="empty">עדיין טוען שירים ברקע (${kProg.n}/${kProg.t}), התוצאות יתעדכנו לבד…</div>`;
+  $('kidsList').innerHTML = ((kRes.tracks.length || kRes.eps.length)
     ? rowsHTML(kRes.tracks, 0) + epRowsHTML(kRes.eps, 0)
-    : '<div class="empty">לא נמצא כלום בחיפוש הזה</div>';
+    : (kDone ? '<div class="empty">לא נמצא כלום בחיפוש הזה</div>' : '')) + foot;
 }
 let kqT;
 $('kq').addEventListener('input', () => { clearTimeout(kqT); kqT = setTimeout(kidsSearch, 350); });
