@@ -152,7 +152,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014205422';
+const VERSION = '20261014213001';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -215,7 +215,7 @@ const fmt = ms => { ms = Math.max(0, ms|0); const s = Math.floor(ms/1000); retur
 const artists = a => (a || []).map(x => x.name).join(', ');
 
 let toastT;
-function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'), 4500); }
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'), 8000); }
 
 /* ---------- התחברות (PKCE) ---------- */
 let tok = null;
@@ -291,29 +291,33 @@ async function api(path, opts = {}, retry = true){
 }
 
 /* ---------- נגן הדפדפן ---------- */
-let player = null, localDeviceId = null, currentDeviceId = null;
-function sdkNote(msg){ const n=$('sdkNote'); n.textContent=msg; n.classList.remove('hidden'); }
+let player = null, localDeviceId = null, currentDeviceId = null, sdkStatus = 'הנגן בדפדפן עדיין נטען…';
+function sdkNote(msg){ sdkStatus = msg; const n=$('sdkNote'); n.textContent=msg; n.classList.remove('hidden'); }
 function loadSDK(){
   window.onSpotifyWebPlaybackSDKReady = () => {
+    sdkStatus = 'רכיב הנגן נטען, מתחבר לספוטיפיי…';
     player = new Spotify.Player({ name:'הנגן שלי', getOAuthToken: cb => getToken().then(cb), volume:0.7 });
     player.addListener('ready', ({device_id}) => {
-      localDeviceId = device_id;
+      localDeviceId = device_id; sdkStatus = 'מוכן';
+      $('sdkNote').classList.add('hidden');
       if (!currentDeviceId) currentDeviceId = device_id;
       refreshDevices();
     });
     player.addListener('not_ready', () => { refreshDevices(); });
-    player.addListener('initialization_error', () => {
-      sdkNote('הדפדפן הזה לא יכול לנגן בעצמו (כך זה בדפדפני טלפון). בחרי למעלה מכשיר אחר, למשל אפליקציית ספוטיפיי בטלפון, והנגן ישלוט בו מכאן.');
+    player.addListener('initialization_error', ({message}) => {
+      sdkNote('הדפדפן הזה לא יכול לנגן בעצמו (' + (message || '') + '). באייפון זה לא נתמך; באנדרואיד כדאי לנסות בכרום.');
     });
-    player.addListener('authentication_error', () => { toast('צריך להתחבר מחדש'); });
-    player.addListener('account_error', () => { sdkNote('הנגן בדפדפן דורש מנוי Spotify Premium.'); });
+    player.addListener('authentication_error', ({message}) => { sdkNote('בעיית התחברות לספוטיפיי: ' + (message || '') + '. כדאי להתנתק ולהתחבר שוב.'); });
+    player.addListener('account_error', ({message}) => { sdkNote('החשבון שמחובר כאן אינו Premium, ולכן הנגן בדפדפן לא יכול לנגן. ' + (message || '')); });
     player.addListener('playback_error', ({message}) => toast('שגיאת ניגון: ' + message));
     player.addListener('player_state_changed', () => pollSoon());
-    player.connect();
+    player.connect().then(ok => { if (!ok) sdkNote('רכיב הנגן לא הצליח להתחבר לספוטיפיי.'); });
   };
   const s = document.createElement('script');
   s.src = 'https://sdk.scdn.co/spotify-player.js';
+  s.onerror = () => sdkNote('רכיב הנגן של ספוטיפיי (sdk.scdn.co) לא נטען. אם יש סינון אתרים בנייד (למשל Family Link), צריך לאשר את scdn.co ואת spotify.com.');
   document.head.appendChild(s);
+  setTimeout(() => { if (!localDeviceId && sdkStatus.indexOf('…') >= 0) sdkNote('רכיב הנגן לא סיים להיטען אחרי 20 שניות. ' + sdkStatus); }, 20000);
 }
 
 /* ---------- מכשירים ---------- */
@@ -349,7 +353,7 @@ async function play(body, quiet){
   }catch(e){
     ok = false;
     if (!quiet){
-      if (e.status === 404) toast('לא נמצא מכשיר פעיל. בחרי מכשיר מהרשימה למעלה.');
+      if (e.status === 404) toast(localDeviceId ? 'לא נמצא מכשיר פעיל. בחרי מכשיר מהרשימה למעלה.' : 'הנגן בדפדפן לא פעיל: ' + sdkStatus);
       else if (e.status === 403) toast('הפעולה לא אפשרית כרגע (' + e.message + ')');
       else toast(e.message);
     }
@@ -359,7 +363,7 @@ async function play(body, quiet){
 }
 async function ctl(path, method, query){
   try{ await api(path, { method, query: Object.assign({}, query || {}, currentDeviceId ? { device_id: currentDeviceId } : {}) }); }
-  catch(e){ toast(e.status === 404 ? 'בחרי מכשיר מהרשימה למעלה' : e.message); }
+  catch(e){ toast(e.status === 404 ? (localDeviceId ? 'בחרי מכשיר מהרשימה למעלה' : 'הנגן בדפדפן לא פעיל: ' + sdkStatus) : e.message); }
   pollSoon();
 }
 
