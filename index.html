@@ -157,7 +157,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014221943';
+const VERSION = '20261014222133';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -509,7 +509,7 @@ $('likedList').addEventListener('click', e => {
 /* ---------- תוכן מאושר ---------- */
 const norm = s => String(s || '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(/["'״׳]/g, '').replace(/\s+/g, ' ').trim();
 const TTL = { art: 24*3600e3, show: 3*3600e3, list: 24*3600e3 };
-const CV = 'v3_';
+const CV = 'v4_';
 function cget(k, ttl){ try{ const v = JSON.parse(store.get(k) || 'null'); return v && Date.now() - v.t < ttl ? v.d : null; }catch(e){ return null; } }
 function cset(k, d){ store.set(k, JSON.stringify({ t: Date.now(), d })); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -548,6 +548,19 @@ const slimEp = (e, show) => ({ uri:e.uri, name:e.name, release_date:e.release_da
 const dedupe = (arr, key) => { const seen = new Set(); return arr.filter(x => { const k = norm(key(x)); if (seen.has(k)) return false; seen.add(k); return true; }); };
 
 let catalogBlocked = cget('catalogBlocked', 24*3600e3) === true;
+/* קטלוג פנימי: רשימת שירים מדויקת לכל זמר, מתוחזקת בקובץ catalog.json */
+let embedded = null;
+async function embeddedCatalog(){
+  if (embedded) return embedded;
+  try{ const r = await fetch(BASE + 'catalog.json?v=' + VERSION, { cache:'no-store' }); embedded = r.ok ? await r.json() : {}; }
+  catch(e){ embedded = {}; }
+  return embedded;
+}
+function embeddedTracks(ids, who){
+  const out = [];
+  ids.forEach(id => ((embedded && embedded[id]) || []).forEach(t => out.push({ uri:t.uri, name:t.name, artists:[{ name: who }], album:{ name: t.album || '' }, duration_ms:t.duration_ms || 0 })));
+  return out;
+}
 function blockedBy(e){ if (e && (e.status === 403 || e.status === 0 || e.status >= 500)){ catalogBlocked = true; cset('catalogBlocked', true); } return true; }
 
 /* חיפוש בספוטיפיי עם דפדוף */
@@ -585,10 +598,16 @@ async function artistTracks(a, bg){
   }
   if (catalogBlocked || useSearch){
     for (const name of (a.q || [a.name])){
-      const found = await searchAll('artist:"' + name + '"', 'track', 400, bg);
-      found.filter(t => t && t.uri && (t.artists || []).some(x => ids.includes(x.id))).forEach(t => tracks.push(slim(t)));
+      for (const q of ['artist:"' + name + '"', name]){
+        try{
+          const found = await searchAll(q, 'track', 400, bg);
+          found.filter(t => t && t.uri && (t.artists || []).some(x => ids.includes(x.id))).forEach(t => tracks.push(slim(t)));
+        }catch(e){ if (!tracks.length && q.startsWith('artist:')) throw e; }
+      }
     }
   }
+  await embeddedCatalog();
+  tracks = embeddedTracks(ids, a.name).concat(tracks);
   tracks = dedupe(tracks, t => t.name);
   if (tracks.length) cset(k, tracks);
   return tracks;
