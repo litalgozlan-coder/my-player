@@ -480,13 +480,28 @@ function cget(k, ttl){ try{ const v = JSON.parse(store.get(k) || 'null'); return
 function cset(k, d){ store.set(k, JSON.stringify({ t: Date.now(), d })); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let inFlight = 0, pauseBg = 0, waitUntil = 0;
+let maxLimit = +(store.get('maxLimit') || 50);
+function getLimit(path, opts){
+  if (opts && opts.query && opts.query.limit != null) return +opts.query.limit;
+  const m = /[?&]limit=(\d+)/.exec(path); return m ? +m[1] : null;
+}
+function setLimit(path, opts, n){
+  if (opts && opts.query && opts.query.limit != null) return [path, Object.assign({}, opts, { query: Object.assign({}, opts.query, { limit: String(n) }) })];
+  return [path.replace(/([?&]limit=)\d+/, '$1' + n), opts];
+}
 async function apiRetry(path, opts, bg){
+  const cur = getLimit(path, opts);
+  if (cur && cur > maxLimit) [path, opts] = setLimit(path, opts, maxLimit);
   for (let i = 0; ; i++){
     while (inFlight >= 2 || (bg && pauseBg > 0) || Date.now() < waitUntil) await sleep(150);
     inFlight++;
     try{ return await api(path, opts); }
     catch(e){
       if (e.status === 429 && i < 6){ waitUntil = Date.now() + Math.max(2000, (e.retryAfter || 0) * 1000 + 500); rateLimitUI(); continue; }
+      if (e.status === 400 && /limit/i.test(e.message) && i < 4){
+        const l = getLimit(path, opts) || 50, nxt = l > 20 ? 20 : l > 10 ? 10 : l > 5 ? 5 : 0;
+        if (nxt){ maxLimit = nxt; store.set('maxLimit', String(nxt)); [path, opts] = setLimit(path, opts, nxt); continue; }
+      }
       throw e;
     }finally{ inFlight--; }
   }
@@ -502,11 +517,14 @@ function blockedBy(e){ if (e && (e.status === 403 || e.status === 0 || e.status 
 /* חיפוש בספוטיפיי עם דפדוף */
 async function searchAll(q, type, max, bg){
   let out = [];
-  for (let off = 0; off < max; off += 50){
-    const j = await apiRetry('/search', { query:{ q, type, limit:'50', offset:String(off) } }, bg);
+  for (let off = 0; off < max; ){
+    let j;
+    try{ j = await apiRetry('/search', { query:{ q, type, limit:String(maxLimit), offset:String(off) } }, bg); }
+    catch(e){ if (out.length) break; throw e; }
     const page = j[type + 's'], items = ((page && page.items) || []).filter(Boolean);
     out = out.concat(items);
     if (!page || !page.next || !items.length) break;
+    off += items.length;
   }
   return out;
 }
@@ -531,7 +549,7 @@ async function artistTracks(a, bg){
   }
   if (catalogBlocked || useSearch){
     for (const name of (a.q || [a.name])){
-      const found = await searchAll('artist:"' + name + '"', 'track', 300, bg);
+      const found = await searchAll('artist:"' + name + '"', 'track', 200, bg);
       found.filter(t => t && t.uri && (t.artists || []).some(x => ids.includes(x.id))).forEach(t => tracks.push(slim(t)));
     }
   }
@@ -593,7 +611,7 @@ async function approvedShows(bg){
     while (next){ const j = await apiRetry(next, undefined, bg); (j.items || []).map(x => x && x.show).forEach(add); next = j.next; }
   }catch(e){}
   for (const pub of ALLOWED.publishers){
-    try{ (await searchAll(pub, 'show', 200, bg)).forEach(add); }catch(e){}
+    try{ (await searchAll(pub, 'show', 100, bg)).forEach(add); }catch(e){}
   }
   const list = [...map.values()].map(s => ({ id:s.id, name:s.name, publisher:s.publisher, total_episodes:s.total_episodes }));
   if (list.length) cset('shows_ok', list);
@@ -610,7 +628,7 @@ async function showEpisodes(s, bg){
   }
   if (catalogBlocked || useSearch){
     const nm = norm(s.name);
-    const found = await searchAll(s.name, 'episode', 200, bg);
+    const found = await searchAll(s.name, 'episode', 100, bg);
     found.filter(e => e && e.uri && norm(e.name).includes(nm)).forEach(e => eps.push(slimEp(e, s.name)));
     eps = dedupe(eps, e => e.uri);
     eps.sort((a, b) => String(b.release_date || '').localeCompare(String(a.release_date || '')));
@@ -689,7 +707,7 @@ async function kidsSearch(){
     + '<div class="empty">מחפש בספוטיפיי…</div>';
   try{
     if (!approvedShowNames){ try{ approvedShowNames = (await approvedShows()).map(x => norm(x.name)).filter(Boolean); }catch(e){ approvedShowNames = []; } }
-    const j = await apiRetry('/search', { query:{ q: $('kq').value.trim(), type:'track,episode', limit:'50' } });
+    const j = await apiRetry('/search', { query:{ q: $('kq').value.trim(), type:'track,episode', limit:'20' } });
     if (seq !== kSeq) return;
     const tracks = ((j.tracks && j.tracks.items) || []).filter(t => t && t.uri &&
       ((t.artists || []).some(a => APPROVED_ARTIST_IDS.has(a.id)) || APPROVED_TRACK_IDS.has(t.id))).map(t => {
