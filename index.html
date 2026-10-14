@@ -152,7 +152,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014204953';
+const VERSION = '20261014205422';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -228,7 +228,7 @@ async function login(){
   const verifier = randStr(64);
   store.set('pkce_verifier', verifier);
   const p = new URLSearchParams({ client_id:CLIENT_ID, response_type:'code', redirect_uri:REDIRECT_URI,
-    scope:SCOPES, code_challenge_method:'S256', code_challenge: await sha256b64url(verifier) });
+    scope:SCOPES, code_challenge_method:'S256', code_challenge: await sha256b64url(verifier), show_dialog:'true' });
   location.href = 'https://accounts.spotify.com/authorize?' + p;
 }
 function saveToken(j){
@@ -862,6 +862,7 @@ $('logout').onclick = logout;
 (async () => {
   if (location.protocol === 'file:'){ $('fileView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
   if (location.hostname === 'localhost'){ location.replace(location.href.replace('//localhost', '//127.0.0.1')); return; }
+  if (new URLSearchParams(location.search).get('logout')){ store.del('tok'); history.replaceState(null, '', BASE); toast('החשבון נותק. אפשר להתחבר עם חשבון אחר.'); }
   try{ tok = JSON.parse(store.get('tok') || 'null'); }catch(e){ tok = null; }
   try{ await handleCallback(); }catch(e){ toast('ההתחברות נכשלה: ' + e.message); }
   if (!tok){ $('loginView').classList.remove('hidden'); $('devices').classList.add('hidden'); $('refreshDev').classList.add('hidden'); return; }
