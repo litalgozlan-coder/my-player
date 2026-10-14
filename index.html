@@ -155,7 +155,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014214818';
+const VERSION = '20261014220450';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -498,11 +498,13 @@ function setLimit(path, opts, n){
   if (opts && opts.query && opts.query.limit != null) return [path, Object.assign({}, opts, { query: Object.assign({}, opts.query, { limit: String(n) }) })];
   return [path.replace(/([?&]limit=)\d+/, '$1' + n), opts];
 }
+let lastBg = 0;
 async function apiRetry(path, opts, bg){
   const cur = getLimit(path, opts);
   if (cur && cur > maxLimit) [path, opts] = setLimit(path, opts, maxLimit);
   for (let i = 0; ; i++){
-    while (inFlight >= 2 || (bg && pauseBg > 0) || Date.now() < waitUntil) await sleep(150);
+    while (inFlight >= (bg ? 1 : 2) || (bg && (pauseBg > 0 || Date.now() < lastBg + 1500)) || Date.now() < waitUntil) await sleep(150);
+    if (bg) lastBg = Date.now();
     inFlight++;
     try{ return await api(path, opts); }
     catch(e){
@@ -687,6 +689,7 @@ async function loadKids(){
     try{ const p = await apiRetry('/playlists/' + en.src.id); en.name = p.name; en.src = p; }catch(e){ en.name = 'רשימה'; }
   }
   renderEntries();
+  setTimeout(bgBuild, 3000);
 }
 async function openEntry(en){
   curEntry = en; kTracks = [];
@@ -702,7 +705,36 @@ async function openEntry(en){
   }catch(e){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את השירים<br><small dir="ltr">' + esc(e.message) + '</small></div>'; }
   finally{ pauseBg--; }
 }
-/* חיפוש: ישירות בספוטיפיי, מסונן לאמנים ולפודקאסטים המאושרים */
+/* טעינה איטית ברקע של כל השירים של כל הזמרים (נשמר בנייד ליום) */
+let bgRunning = false, bgDone = false, bgProg = { n:0, t:0 };
+async function bgBuild(){
+  if (bgRunning || bgDone) return; bgRunning = true;
+  const ents = kEntries.length ? kEntries : entryList();
+  bgProg = { n:0, t: ents.length };
+  for (const en of ents){
+    try{ await entryTracks(en, true); }catch(e){}
+    bgProg.n++; bgStatus();
+    if (norm($('kq').value)) kidsSearch(true);
+  }
+  bgDone = true; bgRunning = false; bgStatus();
+}
+function bgStatus(){
+  const st = $('kStatus'); if (!st || Date.now() < waitUntil) return;
+  st.textContent = bgDone ? '' : `טוען ברקע את כל השירים… ${bgProg.n}/${bgProg.t}`;
+}
+function cachedTracks(){
+  const out = [];
+  for (const en of kEntries){
+    let c = null;
+    if (en.type === 'artist') c = cget('art_' + (en.src.ids || [en.src.id]).join('_'), TTL.art);
+    else if (en.type === 'playlist' && en.src && en.src.id) c = cget('pl_' + en.src.id, TTL.art);
+    else if (en.type === 'tracks') c = cget('tr_' + ALLOWED.tracks.map(t => t.id).join('_'), TTL.art);
+    (c || []).forEach(t => out.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t));
+  }
+  return out;
+}
+
+/* חיפוש: מקומי בשירים שכבר נטענו + ישירות בספוטיפיי, מסונן לאמנים ולפודקאסטים המאושרים */
 const APPROVED_ARTIST_IDS = new Set(ALLOWED.artists.flatMap(a => a.ids || [a.id]));
 const APPROVED_TRACK_IDS = new Set(ALLOWED.tracks.map(t => t.id));
 let approvedShowNames = null;
@@ -711,7 +743,7 @@ function rateLimitUI(){
   const st = $('kStatus'); if (!st) return;
   const left = Math.ceil((waitUntil - Date.now()) / 1000);
   if (left > 0){ st.textContent = `ספוטיפיי מבקש להמתין… ממשיך בעוד ${left} שניות`; if (!rlTimer) rlTimer = setInterval(rateLimitUI, 1000); }
-  else { st.textContent = ''; if (rlTimer){ clearInterval(rlTimer); rlTimer = null; } }
+  else { st.textContent = ''; if (rlTimer){ clearInterval(rlTimer); rlTimer = null; } bgStatus(); }
 }
 function epRowsHTML(eps, start){
   return eps.map((e, i) => `<div class="row" data-ep="${start+i}"><div class="n">🎙</div>
@@ -719,35 +751,47 @@ function epRowsHTML(eps, start){
     <div class="d">${fmt(e.duration_ms)}</div></div>`).join('');
 }
 let kRes = { tracks:[], eps:[] }, kSeq = 0;
-async function kidsSearch(){
+function artistRowsHTML(rows){
+  return rows.map(en => `<div class="row" data-art="${kEntries.indexOf(en)}"><div class="n">👤</div><div class="t"><b>${esc(en.name)}</b><span>כל השירים</span></div><div class="d">‹</div></div>`).join('');
+}
+async function kidsSearch(localOnly){
   const q = norm($('kq').value);
   if (!q){ if (!curEntry) renderEntries(); return; }
   curEntry = null; $('kidsBack').classList.add('hidden');
-  const seq = ++kSeq;
+  const seq = localOnly ? kSeq : ++kSeq;
   const words = q.split(' ');
   const hit = str => { const n = norm(str); return words.every(w => n.includes(w)); };
-  // אמנים מאושרים ששמם מתאים לחיפוש (לפי השם בעברית)
   const artistRows = kEntries.filter(en => en.type === 'artist' && hit(en.name));
-  $('kidsList').innerHTML = (artistRows.length ? artistRows.map(en => `<div class="row" data-art="${kEntries.indexOf(en)}"><div class="n">👤</div><div class="t"><b>${esc(en.name)}</b><span>כל השירים</span></div><div class="d">‹</div></div>`).join('') : '')
-    + '<div class="empty">מחפש בספוטיפיי…</div>';
+  const local = cachedTracks().filter(t => hit(t.name + ' ' + (t.who || '') + ' ' + artists(t.artists) + ' ' + (t.album && t.album.name || '')));
+  const render = (tracks, eps, loading) => {
+    kRes = { tracks, eps };
+    $('kidsList').innerHTML = artistRowsHTML(artistRows) + rowsHTML(tracks, 0) + epRowsHTML(eps, 0)
+      + (loading ? '<div class="empty">מחפש גם בספוטיפיי…</div>' : (!artistRows.length && !tracks.length && !eps.length
+          ? (bgDone ? '<div class="empty">לא נמצא כלום בחיפוש הזה</div>' : `<div class="empty">עדיין לא נמצא. הטעינה ברקע לא הסתיימה (${bgProg.n}/${bgProg.t}), התוצאות יתעדכנו לבד…</div>`) : ''));
+  };
+  render(local.slice(0, 100), localOnly ? kRes.eps : [], !localOnly);
+  if (localOnly) return;
   try{
     if (!approvedShowNames){ try{ approvedShowNames = (await approvedShows()).map(x => norm(x.name)).filter(Boolean); }catch(e){ approvedShowNames = []; } }
-    const j = await apiRetry('/search', { query:{ q: $('kq').value.trim(), type:'track,episode', limit:'20' } });
-    if (seq !== kSeq) return;
-    const tracks = ((j.tracks && j.tracks.items) || []).filter(t => t && t.uri &&
-      ((t.artists || []).some(a => APPROVED_ARTIST_IDS.has(a.id)) || APPROVED_TRACK_IDS.has(t.id))).map(t => {
-        const en = ALLOWED.artists.find(a => (a.ids || [a.id]).some(id => (t.artists || []).some(x => x.id === id)));
-        return Object.assign(slim(t), en ? { who: en.name } : {});
-      });
-    const eps = ((j.episodes && j.episodes.items) || []).filter(e => e && e.uri && approvedShowNames.some(nm => nm && norm(e.name).includes(nm)))
-      .map(e => slimEp(e, (approvedShowNames.find(nm => norm(e.name).includes(nm)) || '')));
-    kRes = { tracks, eps };
-    $('kidsList').innerHTML = (artistRows.length ? artistRows.map(en => `<div class="row" data-art="${kEntries.indexOf(en)}"><div class="n">👤</div><div class="t"><b>${esc(en.name)}</b><span>כל השירים</span></div><div class="d">‹</div></div>`).join('') : '')
-      + rowsHTML(tracks, 0) + epRowsHTML(eps, 0)
-      + (!artistRows.length && !tracks.length && !eps.length ? '<div class="empty">לא נמצא כלום בחיפוש הזה</div>' : '');
+    let tracks = [], eps = [];
+    for (let off = 0; off < 40; off += maxLimit){
+      const j = await apiRetry('/search', { query:{ q: $('kq').value.trim(), type:'track,episode', limit:String(maxLimit), offset:String(off) } });
+      if (seq !== kSeq) return;
+      ((j.tracks && j.tracks.items) || []).filter(t => t && t.uri &&
+        ((t.artists || []).some(a => APPROVED_ARTIST_IDS.has(a.id)) || APPROVED_TRACK_IDS.has(t.id))).forEach(t => {
+          const en = ALLOWED.artists.find(a => (a.ids || [a.id]).some(id => (t.artists || []).some(x => x.id === id)));
+          tracks.push(Object.assign(slim(t), en ? { who: en.name } : {}));
+        });
+      ((j.episodes && j.episodes.items) || []).filter(e => e && e.uri && approvedShowNames.some(nm => nm && norm(e.name).includes(nm)))
+        .forEach(e => eps.push(slimEp(e, (approvedShowNames.find(nm => norm(e.name).includes(nm)) || ''))));
+      if (off === 0 && !(j.tracks && j.tracks.next) && !(j.episodes && j.episodes.next)) break;
+    }
+    const merged = dedupe(local.concat(tracks), t => t.uri).slice(0, 100);
+    render(merged, dedupe(eps, e => e.uri), false);
   }catch(e){
     if (seq !== kSeq) return;
-    $('kidsList').innerHTML = '<div class="empty">החיפוש נכשל<br><small dir="ltr">' + esc(e.message) + '</small></div>';
+    render(local.slice(0, 100), [], false);
+    if (!local.length) $('kidsList').innerHTML += '<div class="empty">החיפוש בספוטיפיי נכשל<br><small dir="ltr">' + esc(e.message) + '</small></div>';
   }
 }
 let kqT;
