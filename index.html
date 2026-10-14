@@ -271,13 +271,15 @@ async function api(path, opts = {}, retry = true){
   if (query) url += '?' + new URLSearchParams(query);
   const headers = { Authorization: 'Bearer ' + t };
   if (body) headers['Content-Type'] = 'application/json';
-  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  let r;
+  try{ r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined }); }
+  catch(err){ throw Object.assign(new Error((err && err.message || 'network') + ' @ ' + url.replace(API, '').split('?')[0]), { status: 0 }); }
   if (r.status === 401 && retry){ await refresh(); return api(path, opts, false); }
   if (r.status === 429){ throw Object.assign(new Error('יותר מדי בקשות, נסי שוב בעוד רגע'), { status:429, retryAfter: +(r.headers.get('Retry-After') || 0) }); }
   const text = await r.text();
   let j = null; try { j = text ? JSON.parse(text) : null; } catch(e) {}
   if (!r.ok){
-    const e = new Error((j && j.error && j.error.message) || ('שגיאה ' + r.status));
+    const e = new Error(r.status + ' ' + ((j && j.error && j.error.message) || '') + ' @ ' + url.replace(API, '').split('?')[0]);
     e.status = r.status; e.reason = j && j.error && j.error.reason; throw e;
   }
   return j;
@@ -622,7 +624,31 @@ function buildIndex(){
 function onIndexProgress(){
   const st = $('kStatus');
   if (st) st.textContent = kDone ? (kIdx.tracks.length ? '' : 'לא נטען אף שיר' + (kErr ? ': ' + kErr : '')) : `טוען את כל השירים ברקע… ${kProg.n}/${kProg.t}`;
+  if (kDone && !kIdx.tracks.length) diag();
   if (norm($('kq').value)) kidsSearch();
+}
+let diagRan = false;
+async function diag(){
+  if (diagRan) return; diagRan = true;
+  const tests = [
+    ['me', '/me'],
+    ['artist', '/artists/13Bny64Z0lG2BQFHhrMTPb'],
+    ['artist albums', '/artists/13Bny64Z0lG2BQFHhrMTPb/albums', { include_groups:'album,single', limit:'5' }],
+    ['albums', '/albums', { ids:'3zdvjrkYyFilN9XdVwJvYZ' }],
+    ['album tracks', '/albums/3zdvjrkYyFilN9XdVwJvYZ/tracks'],
+    ['tracks', '/tracks', { ids:'3DTHsQnfuQVESYAYv0fybQ' }],
+    ['shows', '/shows', { ids:'4HfDVNqt8DOyFG4qsNlKrF' }],
+    ['episodes', '/shows/4HfDVNqt8DOyFG4qsNlKrF/episodes', { limit:'2' }],
+    ['search', '/search', { q:'בן צור', type:'track', limit:'1' }]
+  ];
+  const out = [];
+  for (const [name, path, query] of tests){
+    try{ const j = await api(path, { query }); out.push('✅ ' + name + (j && j.items ? ' (' + j.items.length + ')' : '')); }
+    catch(e){ out.push('❌ ' + name + ': ' + e.message); }
+  }
+  const d = document.createElement('div'); d.className = 'note'; d.setAttribute('dir', 'ltr'); d.style.fontSize = '12px'; d.style.whiteSpace = 'pre-wrap';
+  d.textContent = 'בדיקת חיבור לספוטיפיי:\n' + out.join('\n');
+  $('tab-kids').insertBefore(d, $('kidsList'));
 }
 let kRes = { tracks:[], eps:[] };
 function epRowsHTML(eps, start){
