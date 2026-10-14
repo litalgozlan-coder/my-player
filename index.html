@@ -157,7 +157,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014220931';
+const VERSION = '20261014221825';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -380,8 +380,30 @@ async function poll(){
   catch(e){}
 }
 function pollSoon(){ clearTimeout(pollT); pollT = setTimeout(poll, 600); }
+/* שמירה על מסך דולק בזמן ניגון במכשיר הזה, ושליטת מדיה של הטלפון */
+let wakeLock = null;
+async function keepAwake(on){
+  try{
+    if (on && !wakeLock && 'wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    else if (!on && wakeLock){ const w = wakeLock; wakeLock = null; await w.release(); }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && st && st.is_playing && st.device && st.device.id === localDeviceId) keepAwake(true); });
+function mediaSession(it, playing){
+  if (!('mediaSession' in navigator)) return;
+  try{
+    if (it) navigator.mediaSession.metadata = new MediaMetadata({ title: it.name || '', artist: artists(it.artists) || (it.show && it.show.name) || '', album: (it.album && it.album.name) || '' });
+    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+    navigator.mediaSession.setActionHandler('play', () => ctl('/me/player/play','PUT'));
+    navigator.mediaSession.setActionHandler('pause', () => ctl('/me/player/pause','PUT'));
+    navigator.mediaSession.setActionHandler('nexttrack', () => ctl('/me/player/next','POST'));
+    navigator.mediaSession.setActionHandler('previoustrack', () => ctl('/me/player/previous','POST'));
+  }catch(e){}
+}
 function render(){
   const it = st && st.item;
+  const local = !!(st && st.is_playing && st.device && st.device.id === localDeviceId);
+  keepAwake(local); mediaSession(it, !!(st && st.is_playing));
   $('nowTitle').textContent = it ? it.name : 'לא מתנגן כרגע';
   $('nowSub').textContent = it ? (artists(it.artists) || (it.show && it.show.name) || '') + (st.device ? '  ·  ' + (st.device.id===localDeviceId ? 'המחשב הזה' : st.device.name) : '') : ' ';
   $('pp').textContent = st && st.is_playing ? '⏸' : '▶';
