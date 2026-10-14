@@ -155,7 +155,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014214347';
+const VERSION = '20261014214818';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -865,6 +865,9 @@ async function whoAmI(){
     if (prod && prod !== 'premium') sdkNote('החשבון שמחובר כאן (' + who + ') אינו Premium, ולכן הנגן לא יכול לנגן. צריך לצרף אותו למנוי Family ואז להתנתק ולהתחבר שוב.');
   }catch(e){}
 }
+
+/* רישום service worker (נדרש להתקנה כאפליקציה) */
+if ('serviceWorker' in navigator && location.protocol === 'https:'){ try{ navigator.serviceWorker.register(BASE + 'sw.js'); }catch(e){} }
 
 /* בדיקת גרסה: אם יש גרסה חדשה באתר, טוענים אותה מחדש פעם אחת */
 async function checkVersion(){
