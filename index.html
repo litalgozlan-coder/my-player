@@ -128,6 +128,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 
     <section id="tab-shows" class="hidden">
       <button class="btn hidden" id="showBack" style="margin-bottom:10px">→ חזרה לפודקאסטים</button>
+      <input class="search hidden" id="epq" type="search" placeholder="חיפוש פרק: מספר או מילה מהשם…" autocomplete="off">
       <div class="list" id="showList"><div class="empty">טוען…</div></div>
       <button class="btn more hidden" id="showMore">עוד</button>
     </section>
@@ -151,7 +152,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014204353';
+const VERSION = '20261014204953';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -618,24 +619,40 @@ async function approvedShows(bg){
   if (list.length) cset('shows_ok', list);
   return list;
 }
-async function showEpisodes(s, bg){
-  const k = 'ep_' + s.id, c = cget(k, TTL.show); if (c) return c;
-  let eps = [], useSearch = false;
-  if (!catalogBlocked){
+const stripNiqqud = x => String(x || '').replace(/[֑-ׇ]/g, '').trim();
+const byDateDesc = (a, b) => String(b.release_date || '').localeCompare(String(a.release_date || ''));
+/* פרקים של פודקאסט: טעינה הדרגתית (עד 100 בכל פעם) */
+async function showEpisodes(s, bg, more){
+  const k = 'ep_' + s.id;
+  let st = cget(k, TTL.show) || { eps:[], off:0, done:false, total:null, src:null };
+  if (st.done || (st.eps.length && !more)) return st;
+  if (!st.src && !catalogBlocked){
     try{
       let next = `/shows/${s.id}/episodes?limit=50`;
-      while (next && eps.length < 1000){ const j = await apiRetry(next, undefined, bg); eps = eps.concat((j.items || []).filter(e => e && e.uri).map(e => slimEp(e, s.name))); next = j.next; }
-    }catch(e){ blockedBy(e); eps = []; useSearch = true; }
+      while (next && st.eps.length < 1000){ const j = await apiRetry(next, undefined, bg); st.eps = st.eps.concat((j.items || []).filter(e => e && e.uri).map(e => slimEp(e, s.name))); next = j.next; }
+      st.done = true; st.total = st.eps.length; st.src = 'catalog';
+      cset(k, st); return st;
+    }catch(e){ blockedBy(e); st.eps = []; }
   }
-  if (catalogBlocked || useSearch){
-    const nm = norm(s.name);
-    const found = await searchAll(s.name, 'episode', 100, bg);
-    found.filter(e => e && e.uri && norm(e.name).includes(nm)).forEach(e => eps.push(slimEp(e, s.name)));
-    eps = dedupe(eps, e => e.uri);
-    eps.sort((a, b) => String(b.release_date || '').localeCompare(String(a.release_date || '')));
+  st.src = 'search';
+  const nm = norm(s.name), q = '"' + stripNiqqud(s.name) + '"';
+  for (let n = 0; n < 5 && !st.done; n++){
+    let j;
+    try{ j = await apiRetry('/search', { query:{ q, type:'episode', limit:String(maxLimit), offset:String(st.off) } }, bg); }
+    catch(e){ if (st.eps.length) break; throw e; }
+    const page = j.episodes, items = ((page && page.items) || []).filter(Boolean);
+    if (page && page.total != null) st.total = page.total;
+    items.filter(e => e.uri && norm(e.name).includes(nm)).forEach(e => st.eps.push(slimEp(e, s.name)));
+    st.off += items.length;
+    if (!page || !page.next || !items.length || st.off >= 1000) st.done = true;
   }
-  if (eps.length) cset(k, eps);
-  return eps;
+  st.eps = dedupe(st.eps, e => e.uri).sort(byDateDesc);
+  cset(k, st); return st;
+}
+async function findEpisodes(s, q){
+  const nm = norm(s.name);
+  const j = await apiRetry('/search', { query:{ q: '"' + stripNiqqud(s.name) + '" ' + q, type:'episode', limit:String(maxLimit) } });
+  return ((j.episodes && j.episodes.items) || []).filter(e => e && e.uri && norm(e.name).includes(nm)).map(e => slimEp(e, s.name));
 }
 
 /* לשונית "שירים": אמנים, רשימות ושירים בודדים מאושרים, וחיפוש פנימי */
@@ -741,9 +758,9 @@ $('kidsList').addEventListener('click', e => {
 $('kidsBack').onclick = () => { $('kq').value = ''; renderEntries(); };
 
 /* פודקאסטים */
-let shows = [], showNext = FULL ? '/me/shows?limit=50' : null, curShow = null, eps = [];
+let shows = [], showNext = FULL ? '/me/shows?limit=50' : null, curShow = null;
 function renderShows(){
-  $('showBack').classList.add('hidden');
+  $('showBack').classList.add('hidden'); $('epq').classList.add('hidden'); $('showMore').textContent = 'עוד';
   $('showList').innerHTML = shows.length ? shows.map((s, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
     <div class="t"><b>${esc(s.name)}</b><span>${s.total_episodes != null ? s.total_episodes + ' פרקים' : ''}${s.publisher ? ' · ' + esc(s.publisher) : ''}</span></div><div class="d">‹</div></div>`).join('')
     : '<div class="empty">עדיין לא אושרו פודקאסטים</div>';
@@ -762,35 +779,56 @@ async function loadShows(){
     renderShows();
   }catch(e){ $('showList').innerHTML = '<div class="empty">לא ניתן לטעון</div>'; toast(e.message); }
 }
+let epSt = null, epView = [];
 function renderEps(){
-  $('showBack').classList.remove('hidden');
-  $('showList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(curShow.name)}</b><span>הפרקים מהחדש לישן</span></div></div>` +
-    `<div class="row" data-all="1"><div class="n">▶</div><div class="t"><b>נגן את הפודקאסט</b><span>מתחיל מהפרק האחרון וממשיך אחורה</span></div></div>` +
-    (eps.length ? eps.map((e, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
+  $('showBack').classList.remove('hidden'); $('epq').classList.remove('hidden');
+  const q = norm($('epq').value);
+  const list = epView;
+  const count = epSt ? (epSt.done ? `${epSt.eps.length} פרקים` : `נטענו ${epSt.eps.length}${epSt.total ? ' מתוך ~' + epSt.total : ''}`) : '';
+  $('showList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(curShow.name)}</b><span>${count} · מהחדש לישן</span></div></div>` +
+    (q ? '' : `<div class="row" data-all="1"><div class="n">▶</div><div class="t"><b>נגן את הפודקאסט</b><span>מתחיל מהפרק האחרון וממשיך אחורה</span></div></div>`) +
+    (list.length ? list.map((e, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
     <div class="t"><b>${esc(e.name)}</b><span>${esc(e.release_date || '')}</span></div><div class="d">${fmt(e.duration_ms)}</div></div>`).join('')
-    : '<div class="empty">רשימת הפרקים לא זמינה כרגע, אבל אפשר לנגן מהשורה למעלה</div>');
-  $('showMore').classList.add('hidden');
+    : `<div class="empty">${q ? 'לא נמצא פרק כזה' : 'רשימת הפרקים לא זמינה כרגע, אבל אפשר לנגן מהשורה למעלה'}</div>`);
+  $('showMore').textContent = 'עוד פרקים';
+  $('showMore').classList.toggle('hidden', !!q || !epSt || epSt.done);
 }
-async function loadEps(){
+async function loadEps(more){
   pauseBg++;
-  try{ eps = await showEpisodes(curShow); renderEps(); }
-  catch(e){ eps = []; renderEps(); toast(e.message); }
+  try{ epSt = await showEpisodes(curShow, false, more); epView = epSt.eps; renderEps(); }
+  catch(e){ epSt = epSt || { eps:[], done:true }; epView = epSt.eps; renderEps(); toast(e.message); }
   finally{ pauseBg--; }
 }
+let epqT, epqSeq = 0;
+$('epq').addEventListener('input', () => {
+  clearTimeout(epqT);
+  epqT = setTimeout(async () => {
+    const q = norm($('epq').value), seq = ++epqSeq;
+    if (!q){ epView = epSt ? epSt.eps : []; renderEps(); return; }
+    const words = q.split(' ');
+    const hit = e => { const n = norm(e.name); return words.every(w => n.includes(w)); };
+    epView = (epSt ? epSt.eps : []).filter(hit); renderEps();
+    try{
+      const found = await findEpisodes(curShow, $('epq').value.trim());
+      if (seq !== epqSeq) return;
+      epView = dedupe(epView.concat(found.filter(hit)), e => e.uri).sort(byDateDesc); renderEps();
+    }catch(e){}
+  }, 500);
+});
 $('showList').addEventListener('click', e => {
   const r = e.target.closest('.row'); if (!r) return;
   if (r.dataset.all){ play({ context_uri: 'spotify:show:' + curShow.id }); return; }
   if (r.dataset.i == null) return;
   const i = +r.dataset.i;
   if (!curShow){
-    curShow = shows[i]; eps = [];
-    $('showList').innerHTML = '<div class="empty">טוען…</div>'; loadEps();
+    curShow = shows[i]; epSt = null; epView = []; $('epq').value = '';
+    $('showList').innerHTML = '<div class="empty">טוען…</div>'; loadEps(false);
   } else {
-    play({ uris: eps.slice(i, i + 50).map(x => x.uri) });
+    play({ uris: epView.slice(i, i + 50).map(x => x.uri) });
   }
 });
-$('showBack').onclick = () => { curShow = null; renderShows(); };
-$('showMore').onclick = () => loadShows();
+$('showBack').onclick = () => { curShow = null; $('epq').value = ''; $('epq').classList.add('hidden'); renderShows(); };
+$('showMore').onclick = () => curShow ? loadEps(true) : loadShows();
 
 /* לשוניות */
 const TABS = FULL ? ['kids','shows','search','playlists','liked'] : ['kids','shows'];
