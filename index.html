@@ -157,7 +157,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014222133';
+const VERSION = '20261014223839';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -183,7 +183,6 @@ const ALLOWED = {
     { id:'3VbJFS67YDdxun99QYaF5p', name:'שי וינר', q:['Shay Viner'] },
     { id:'6IDzwVsZdjzXYLF7IDENaq', name:'שמוליק סוכות', q:['שמוליק סוכות'] },
     { id:'05iRQUcipjT4IA9swuMIU5', name:'מרדכי שפירא', q:['Mordechai Shapiro'] },
-    { id:'0q7HH30kbY8dCPGHCsq2Ug', name:'ערוץ בייבי', q:['ערוץ בייבי'] },
     { id:'3Y0YvS2crBLVS9eA5jX8Ux', name:'משה קליין', q:['משה קליין'] },
     { id:'4OqhRVs3bnTqs7ugKApPp9', name:'קובי ברומר', q:['קובי ברומר'] },
     { id:'4ZacNUWpBQ9JoQuvkYys9t', name:'זאבי', q:['Zevi'] },
@@ -509,7 +508,7 @@ $('likedList').addEventListener('click', e => {
 /* ---------- תוכן מאושר ---------- */
 const norm = s => String(s || '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(/["'״׳]/g, '').replace(/\s+/g, ' ').trim();
 const TTL = { art: 24*3600e3, show: 3*3600e3, list: 24*3600e3 };
-const CV = 'v4_';
+const CV = 'v5_';
 function cget(k, ttl){ try{ const v = JSON.parse(store.get(k) || 'null'); return v && Date.now() - v.t < ttl ? v.d : null; }catch(e){ return null; } }
 function cset(k, d){ store.set(k, JSON.stringify({ t: Date.now(), d })); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -757,7 +756,9 @@ async function bgBuild(){
   bgProg = { n:0, t: ents.length };
   for (const en of ents){
     try{ await entryTracks(en, true); }catch(e){}
-    bgProg.n++; bgStatus();
+    bgProg.n++;
+    if (bgProg.n >= bgProg.t){ bgDone = true; bgRunning = false; }
+    bgStatus();
     if (norm($('kq').value)) kidsSearch(true);
   }
   bgDone = true; bgRunning = false; bgStatus();
@@ -770,7 +771,12 @@ function cachedTracks(){
   const out = [];
   for (const en of kEntries){
     let c = null;
-    if (en.type === 'artist') c = cget(CV + 'art_' + (en.src.ids || [en.src.id]).join('_'), TTL.art);
+    if (en.type === 'artist'){
+      const ids = en.src.ids || [en.src.id];
+      c = cget(CV + 'art_' + ids.join('_'), TTL.art);
+      /* הקטלוג המובנה (catalog.json) זמין לחיפוש גם לפני שהטעינה ברקע הגיעה לזמר הזה */
+      c = dedupe(embeddedTracks(ids, en.name).concat(c || []), t => t.uri);
+    }
     else if (en.type === 'playlist' && en.src && en.src.id) c = cget(CV + 'pl_' + en.src.id, TTL.art);
     else if (en.type === 'tracks') c = cget(CV + 'tr_' + ALLOWED.tracks.map(t => t.id).join('_'), TTL.art);
     (c || []).forEach(t => out.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t));
@@ -795,6 +801,8 @@ function epRowsHTML(eps, start){
     <div class="d">${fmt(e.duration_ms)}</div></div>`).join('');
 }
 let kRes = { tracks:[], eps:[] }, kSeq = 0;
+/* תוצאות אחרונות מספוטיפיי לפי חיפוש – נשמרות כדי שלא ייעלמו כשהטעינה ברקע מרעננת את המסך */
+let kRemote = { q:'', tracks:[], eps:[], loading:false, err:'' };
 function artistRowsHTML(rows){
   return rows.map(en => `<div class="row" data-art="${kEntries.indexOf(en)}"><div class="n">👤</div><div class="t"><b>${esc(en.name)}</b><span>כל השירים</span></div><div class="d">‹</div></div>`).join('');
 }
@@ -803,18 +811,31 @@ async function kidsSearch(localOnly){
   if (!q){ if (!curEntry) renderEntries(); return; }
   curEntry = null; $('kidsBack').classList.add('hidden');
   const seq = localOnly ? kSeq : ++kSeq;
+  if (!embedded){ await embeddedCatalog(); if (seq !== kSeq || norm($('kq').value) !== q) return; }
   const words = q.split(' ');
   const hit = str => { const n = norm(str); return words.every(w => n.includes(w)); };
   const artistRows = kEntries.filter(en => en.type === 'artist' && hit(en.name));
   const local = cachedTracks().filter(t => hit(t.name + ' ' + (t.who || '') + ' ' + artists(t.artists) + ' ' + (t.album && t.album.name || '')));
-  const render = (tracks, eps, loading) => {
+  const render = () => {
+    const same = kRemote.q === q;
+    const tracks = dedupe(local.concat(same ? kRemote.tracks : []), t => t.uri).slice(0, 100);
+    const eps = same ? kRemote.eps : [];
+    const loading = same && kRemote.loading;
     kRes = { tracks, eps };
-    $('kidsList').innerHTML = artistRowsHTML(artistRows) + rowsHTML(tracks, 0) + epRowsHTML(eps, 0)
-      + (loading ? '<div class="empty">מחפש גם בספוטיפיי…</div>' : (!artistRows.length && !tracks.length && !eps.length
-          ? (bgDone ? '<div class="empty">לא נמצא כלום בחיפוש הזה</div>' : `<div class="empty">עדיין לא נמצא. הטעינה ברקע לא הסתיימה (${bgProg.n}/${bgProg.t}), התוצאות יתעדכנו לבד…</div>`) : ''));
+    let msg = '';
+    if (loading) msg = '<div class="empty">מחפש גם בספוטיפיי…</div>';
+    else if (!artistRows.length && !tracks.length && !eps.length){
+      if (same && kRemote.err) msg = '<div class="empty">החיפוש בספוטיפיי נכשל<br><small dir="ltr">' + esc(kRemote.err) + '</small></div>';
+      else if (bgDone || (bgProg.t > 0 && bgProg.n >= bgProg.t)) msg = '<div class="empty">לא נמצא כלום בחיפוש הזה</div>';
+      else if (bgProg.t > 0) msg = `<div class="empty">עדיין לא נמצא. הטעינה ברקע לא הסתיימה (${bgProg.n}/${bgProg.t}), התוצאות יתעדכנו לבד…</div>`;
+      else msg = '<div class="empty">עדיין לא נמצא. הטעינה ברקע מתחילה, התוצאות יתעדכנו לבד…</div>';
+    }
+    $('kidsList').innerHTML = artistRowsHTML(artistRows) + rowsHTML(tracks, 0) + epRowsHTML(eps, 0) + msg;
   };
-  render(local.slice(0, 100), localOnly ? kRes.eps : [], !localOnly);
-  if (localOnly) return;
+  if (localOnly){ render(); return; }
+  if (kRemote.q !== q) kRemote = { q, tracks:[], eps:[], loading:true, err:'' };
+  else { kRemote.loading = true; kRemote.err = ''; }
+  render();
   try{
     if (!approvedShowNames){ try{ approvedShowNames = (await approvedShows()).map(x => norm(x.name)).filter(Boolean); }catch(e){ approvedShowNames = []; } }
     let tracks = [], eps = [];
@@ -830,13 +851,12 @@ async function kidsSearch(localOnly){
         .forEach(e => eps.push(slimEp(e, (approvedShowNames.find(nm => norm(e.name).includes(nm)) || ''))));
       if (off === 0 && !(j.tracks && j.tracks.next) && !(j.episodes && j.episodes.next)) break;
     }
-    const merged = dedupe(local.concat(tracks), t => t.uri).slice(0, 100);
-    render(merged, dedupe(eps, e => e.uri), false);
+    kRemote = { q, tracks: dedupe(tracks, t => t.uri), eps: dedupe(eps, e => e.uri), loading:false, err:'' };
   }catch(e){
     if (seq !== kSeq) return;
-    render(local.slice(0, 100), [], false);
-    if (!local.length) $('kidsList').innerHTML += '<div class="empty">החיפוש בספוטיפיי נכשל<br><small dir="ltr">' + esc(e.message) + '</small></div>';
+    kRemote = { q, tracks:[], eps:[], loading:false, err: e.message || String(e) };
   }
+  if (seq === kSeq && norm($('kq').value) === q) render();
 }
 let kqT;
 $('kq').addEventListener('input', () => { clearTimeout(kqT); kqT = setTimeout(kidsSearch, 600); });

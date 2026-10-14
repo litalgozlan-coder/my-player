@@ -1,18 +1,1310 @@
 {
-  "5C9yoYmFBktMXwP9SoLLIP": [
-    {"uri":"spotify:track:6G4HDbRN7Z5jukedYYFe5t","name":"לאקי לאקי","album":"לאקי לאקי","duration_ms":173056},
-    {"uri":"spotify:track:7wUbxQyczWLTgaNUg03ujT","name":"אני לא צריכה","album":"אני לא צריכה","duration_ms":158400},
-    {"uri":"spotify:track:5kmikYIsC2vNe7wnI2eCvX","name":"אני רק ילדה","album":"אני רק ילדה","duration_ms":168152},
-    {"uri":"spotify:track:4UfyrxCgGBsl9YiBspgs0J","name":"שרה לעצמי","album":"שרה לעצמי","duration_ms":171099},
-    {"uri":"spotify:track:3wa09PEIFa7FsMvK8WskRs","name":"העישון הורס ת'לייף","album":"העישון הורס ת'לייף","duration_ms":140478},
-    {"uri":"spotify:track:4fMCrEkXIEbobtuaEWVTDK","name":"מה אומרים עליי","album":"מה אומרים עליי","duration_ms":162580},
-    {"uri":"spotify:track:75g3gtR2eclHFrhTgyDPeO","name":"צאו לי מהחדר","album":"צאו לי מהחדר","duration_ms":195066},
-    {"uri":"spotify:track:1FFQ9v4eCYkLA29U5TQDOo","name":"שכולם יסתכלו עליי","album":"שכולם יסתכלו עליי","duration_ms":160932},
-    {"uri":"spotify:track:7h5BAUO5bbDRMu4y6dk7Mw","name":"לא בא לי להיות","album":"לא בא לי להיות","duration_ms":140000},
-    {"uri":"spotify:track:61yZgTR4qDNidojSXri8FU","name":"לעוף בלי לפחד","album":"לעוף בלי לפחד","duration_ms":184761},
-    {"uri":"spotify:track:2oRE4OQQrzPyyo9blpvd94","name":"לגדול","album":"לגדול","duration_ms":201600},
-    {"uri":"spotify:track:51voJ0uNz5KGq2ZSGA6I42","name":"חברות שלי","album":"חברות שלי","duration_ms":132883},
-    {"uri":"spotify:track:3O1NsOlQdyrd20uxvY6JA8","name":"להיות כוכבת","album":"להיות כוכבת","duration_ms":167812},
-    {"uri":"spotify:track:5dVYGL78pj17ov3PJE3UYJ","name":"באתי להפתיע","album":"באתי להפתיע","duration_ms":170000}
-  ]
+ "5C9yoYmFBktMXwP9SoLLIP": [
+  {
+   "uri": "spotify:track:6G4HDbRN7Z5jukedYYFe5t",
+   "name": "לאקי לאקי",
+   "album": "לאקי לאקי",
+   "duration_ms": 173056
+  },
+  {
+   "uri": "spotify:track:7wUbxQyczWLTgaNUg03ujT",
+   "name": "אני לא צריכה",
+   "album": "אני לא צריכה",
+   "duration_ms": 158400
+  },
+  {
+   "uri": "spotify:track:5kmikYIsC2vNe7wnI2eCvX",
+   "name": "אני רק ילדה",
+   "album": "אני רק ילדה",
+   "duration_ms": 168152
+  },
+  {
+   "uri": "spotify:track:4UfyrxCgGBsl9YiBspgs0J",
+   "name": "שרה לעצמי",
+   "album": "שרה לעצמי",
+   "duration_ms": 171099
+  },
+  {
+   "uri": "spotify:track:3wa09PEIFa7FsMvK8WskRs",
+   "name": "העישון הורס ת'לייף",
+   "album": "העישון הורס ת'לייף",
+   "duration_ms": 140478
+  },
+  {
+   "uri": "spotify:track:4fMCrEkXIEbobtuaEWVTDK",
+   "name": "מה אומרים עליי",
+   "album": "מה אומרים עליי",
+   "duration_ms": 162580
+  },
+  {
+   "uri": "spotify:track:75g3gtR2eclHFrhTgyDPeO",
+   "name": "צאו לי מהחדר",
+   "album": "צאו לי מהחדר",
+   "duration_ms": 195066
+  },
+  {
+   "uri": "spotify:track:1FFQ9v4eCYkLA29U5TQDOo",
+   "name": "שכולם יסתכלו עליי",
+   "album": "שכולם יסתכלו עליי",
+   "duration_ms": 160932
+  },
+  {
+   "uri": "spotify:track:7h5BAUO5bbDRMu4y6dk7Mw",
+   "name": "לא בא לי להיות",
+   "album": "לא בא לי להיות",
+   "duration_ms": 140000
+  },
+  {
+   "uri": "spotify:track:61yZgTR4qDNidojSXri8FU",
+   "name": "לעוף בלי לפחד",
+   "album": "לעוף בלי לפחד",
+   "duration_ms": 184761
+  },
+  {
+   "uri": "spotify:track:2oRE4OQQrzPyyo9blpvd94",
+   "name": "לגדול",
+   "album": "לגדול",
+   "duration_ms": 201600
+  },
+  {
+   "uri": "spotify:track:51voJ0uNz5KGq2ZSGA6I42",
+   "name": "חברות שלי",
+   "album": "חברות שלי",
+   "duration_ms": 132883
+  },
+  {
+   "uri": "spotify:track:3O1NsOlQdyrd20uxvY6JA8",
+   "name": "להיות כוכבת",
+   "album": "להיות כוכבת",
+   "duration_ms": 167812
+  },
+  {
+   "uri": "spotify:track:5dVYGL78pj17ov3PJE3UYJ",
+   "name": "באתי להפתיע",
+   "album": "באתי להפתיע",
+   "duration_ms": 170000
+  }
+ ],
+ "13Bny64Z0lG2BQFHhrMTPb": [
+  {
+   "uri": "spotify:track:21lNFbYE1iSBYtNcW2U8Vm",
+   "name": "איש הפלא",
+   "album": "איש הפלא",
+   "duration_ms": 190000
+  },
+  {
+   "uri": "spotify:track:0rNhXjwIf1748jqeHo3n6z",
+   "name": "אהבת השם",
+   "album": "חלק א' - הוויה",
+   "duration_ms": 135480
+  },
+  {
+   "uri": "spotify:track:6spkDJlie5raRezVwEDeQK",
+   "name": "כל עכבה לטובה",
+   "album": "",
+   "duration_ms": 162088
+  },
+  {
+   "uri": "spotify:track:0Rmn62Ip7xgkDUgPTeXl2S",
+   "name": "דתי לפי דעתי",
+   "album": "חלק א' - הוויה",
+   "duration_ms": 181874
+  },
+  {
+   "uri": "spotify:track:4QcmYhQnuOT79zUwmsAOnE",
+   "name": "רוצי ילדה",
+   "album": "שמחה",
+   "duration_ms": 215400
+  },
+  {
+   "uri": "spotify:track:3mnM4hnpPe35KCk3bmaO2G",
+   "name": "שמחה",
+   "album": "שמחה",
+   "duration_ms": 166764
+  },
+  {
+   "uri": "spotify:track:3TQtybs90OnjGO8uaYSZi6",
+   "name": "אמא שלך",
+   "album": "איש הפלא",
+   "duration_ms": 200491
+  },
+  {
+   "uri": "spotify:track:3DTHsQnfuQVESYAYv0fybQ",
+   "name": "אבא",
+   "album": "",
+   "duration_ms": 202408
+  },
+  {
+   "uri": "spotify:track:3KFaiPnUVpvwrcIjbMFKBW",
+   "name": "נשמות צמאות",
+   "album": "",
+   "duration_ms": 179047
+  },
+  {
+   "uri": "spotify:track:5PFJIc3WZprU0Mjy7TvsMQ",
+   "name": "הוויה",
+   "album": "חלק א' - הוויה",
+   "duration_ms": 190059
+  },
+  {
+   "uri": "spotify:track:7FO36omE1TR5bm8YUtVkzA",
+   "name": "גאולה",
+   "album": "",
+   "duration_ms": 162352
+  },
+  {
+   "uri": "spotify:track:3gPo9Y9MgmltvcNQXNEqEP",
+   "name": "מה היה מה יהיה",
+   "album": "איש הפלא",
+   "duration_ms": 185000
+  },
+  {
+   "uri": "spotify:track:20Fj4u4L2vl0vPn7lAHWKZ",
+   "name": "הבת של המלך",
+   "album": "הכל בסדר",
+   "duration_ms": 154545
+  },
+  {
+   "uri": "spotify:track:2FDOzB6NZwrF5mG8sRluoe",
+   "name": "אישתי",
+   "album": "",
+   "duration_ms": 218000
+  },
+  {
+   "uri": "spotify:track:60qhM7vig0oDlKzv2k4b56",
+   "name": "אמונה",
+   "album": "",
+   "duration_ms": 208970
+  },
+  {
+   "uri": "spotify:track:2yB5lp7BXtVbeTnUF97D44",
+   "name": "קרבחאל",
+   "album": "שמחה",
+   "duration_ms": 167000
+  }
+ ],
+ "7m09aLn1QHUz5D7hqNnkW2": [
+  {
+   "uri": "spotify:track:2wRx3EInpPYjQej6d7P0aj",
+   "name": "רבי נחמן",
+   "album": "",
+   "duration_ms": 144857
+  },
+  {
+   "uri": "spotify:track:77x1tqNYweec8AIuUkxriE",
+   "name": "טאטע תטהר",
+   "album": "",
+   "duration_ms": 188835
+  },
+  {
+   "uri": "spotify:track:4sNYW3jSDqgwjUahndBkRZ",
+   "name": "לדבקה בך",
+   "album": "",
+   "duration_ms": 224232
+  },
+  {
+   "uri": "spotify:track:7citwhIjpn00OA9FgjqRSw",
+   "name": "דיבורים של אמת",
+   "album": "",
+   "duration_ms": 169200
+  },
+  {
+   "uri": "spotify:track:05qei7mlj3xcJkks4Kwn8B",
+   "name": "רביד",
+   "album": "",
+   "duration_ms": 188473
+  },
+  {
+   "uri": "spotify:track:1u7dx4QxbZbcWWEGfgFo0z",
+   "name": "המלחמה האחרונה",
+   "album": "",
+   "duration_ms": 220505
+  },
+  {
+   "uri": "spotify:track:7AfWkhoN7gijL1EalwoBf7",
+   "name": "הרע זה לא אני",
+   "album": "",
+   "duration_ms": 190234
+  },
+  {
+   "uri": "spotify:track:7vs6sUUgZbKSRzPan8wA9X",
+   "name": "מתוך הדמעות הוא קורא לך",
+   "album": "",
+   "duration_ms": 224347
+  },
+  {
+   "uri": "spotify:track:0VzzQAlhKGpdJ54hZPCzMe",
+   "name": "מלך הדור",
+   "album": "",
+   "duration_ms": 186500
+  },
+  {
+   "uri": "spotify:track:0ariE4oGibfGefful4FtDs",
+   "name": "אבא נשמה",
+   "album": "",
+   "duration_ms": 239151
+  },
+  {
+   "uri": "spotify:track:4jOvaQlsOEWmluCnU71Nq1",
+   "name": "חום ואהבה",
+   "album": "",
+   "duration_ms": 254511
+  },
+  {
+   "uri": "spotify:track:6UMvD1w1z68hBDy4FXE4x0",
+   "name": "מכר את כל הכרטיסים",
+   "album": "",
+   "duration_ms": 217500
+  },
+  {
+   "uri": "spotify:track:2cEyCV8Wack87laFRAD30J",
+   "name": "אבטיח",
+   "album": "",
+   "duration_ms": 222702
+  },
+  {
+   "uri": "spotify:track:7vXv8385iNKK2cdja1sHrU",
+   "name": "תשמור עלי",
+   "album": "",
+   "duration_ms": 201000
+  },
+  {
+   "uri": "spotify:track:3bI5ShBGMzqmM5U6Nk43tM",
+   "name": "לא חוזר לרחובות",
+   "album": "",
+   "duration_ms": 243209
+  },
+  {
+   "uri": "spotify:track:1goklMi5oI2aF8rk1HrCF5",
+   "name": "אחותי",
+   "album": "",
+   "duration_ms": 172063
+  },
+  {
+   "uri": "spotify:track:3zUt89aD72FVL2DdXUxLk0",
+   "name": "תמיד אוהב אותי",
+   "album": "",
+   "duration_ms": 215374
+  },
+  {
+   "uri": "spotify:track:20Fj4u4L2vl0vPn7lAHWKZ",
+   "name": "הבת של המלך",
+   "album": "הכל בסדר",
+   "duration_ms": 154545
+  }
+ ],
+ "7CgBEyXbjOjFX3HiysHtXN": [
+  {
+   "uri": "spotify:track:5LqzGpUPRQXbN9WwFdKY17",
+   "name": "המלך בשדה",
+   "album": "",
+   "duration_ms": 196097
+  },
+  {
+   "uri": "spotify:track:6MG1IJFvf8OoZRRUTFMEAa",
+   "name": "לב לבן",
+   "album": "",
+   "duration_ms": 184000
+  },
+  {
+   "uri": "spotify:track:734AMCv7X6sufZrOLJV5ap",
+   "name": "עונג שבת",
+   "album": "",
+   "duration_ms": 211936
+  },
+  {
+   "uri": "spotify:track:3V1FEnWwoN0pt2n4F6JrNx",
+   "name": "בין קודש לחול",
+   "album": "",
+   "duration_ms": 198628
+  },
+  {
+   "uri": "spotify:track:6YHJhDfwBI98pWAA1reSHM",
+   "name": "תחפש טוב",
+   "album": "שולי שר בניון",
+   "duration_ms": 220883
+  },
+  {
+   "uri": "spotify:track:0h9lqpfcS37U6zvDCKwQhX",
+   "name": "אייכה",
+   "album": "נקודה טובה",
+   "duration_ms": 246920
+  },
+  {
+   "uri": "spotify:track:26vX9BpG5ZC2HmYeR3mecX",
+   "name": "עוקר הרים",
+   "album": "",
+   "duration_ms": 241230
+  },
+  {
+   "uri": "spotify:track:0BeS64Wew0oOdLbjNjfG6K",
+   "name": "גיליתי מחדש",
+   "album": "שולי שר בניון",
+   "duration_ms": 275495
+  },
+  {
+   "uri": "spotify:track:0K2IZguODxH0ysrXxhZsBT",
+   "name": "ערפל",
+   "album": "נקודה טובה",
+   "duration_ms": 212840
+  },
+  {
+   "uri": "spotify:track:2kf94UFIZhfPvXuZvIHMV5",
+   "name": "אחד כמוך",
+   "album": "",
+   "duration_ms": 221000
+  },
+  {
+   "uri": "spotify:track:0zBeILqxHM9Bc9YUycNCee",
+   "name": "בראשית",
+   "album": "",
+   "duration_ms": 195848
+  },
+  {
+   "uri": "spotify:track:15YFwm4uXwfuPpEYIbdEmS",
+   "name": "דע בני אהובי",
+   "album": "רצוא ושוב",
+   "duration_ms": 347501
+  },
+  {
+   "uri": "spotify:track:15G0iTy2Ie5MIWShmKiB4f",
+   "name": "כשאנחנו מנגנים",
+   "album": "",
+   "duration_ms": 260621
+  },
+  {
+   "uri": "spotify:track:2hHje3agUzdsFW6dDD3zBf",
+   "name": "נקודה טובה",
+   "album": "נקודה טובה",
+   "duration_ms": 169146
+  },
+  {
+   "uri": "spotify:track:46LVlmplh0kkRAt3tPzd1I",
+   "name": "אחותי",
+   "album": "נקודה טובה",
+   "duration_ms": 189040
+  },
+  {
+   "uri": "spotify:track:1CR1PiS4FfJidtaOxP4XEN",
+   "name": "בן מלך שעשוי מאבנים טובות",
+   "album": "נקודה טובה",
+   "duration_ms": 313573
+  },
+  {
+   "uri": "spotify:track:5Am5GSd3X37xFizHRop1YO",
+   "name": "כנען (12 מרגלים)",
+   "album": "",
+   "duration_ms": 290969
+  },
+  {
+   "uri": "spotify:track:0NeXKZeOBm9INFPaFgEfnO",
+   "name": "מוחין דקטנות",
+   "album": "נקודה טובה",
+   "duration_ms": 322026
+  }
+ ],
+ "4aTDB7CQyMNOLQsCpAS9EW": [
+  {
+   "uri": "spotify:track:44N4xkhcb3dPyguEY1x7Ja",
+   "name": "Charasho",
+   "album": "Kulanu Nelech",
+   "duration_ms": 276469
+  },
+  {
+   "uri": "spotify:track:4VObzibzaHzSrUrnnIxO3y",
+   "name": "Yesh Tikvah",
+   "album": "Yesh Tikvah",
+   "duration_ms": 276528
+  },
+  {
+   "uri": "spotify:track:22M640eUPaiE8MOyXrcHLd",
+   "name": "Toda",
+   "album": "Kol Haneshama Sheli",
+   "duration_ms": 275448
+  },
+  {
+   "uri": "spotify:track:0FNfBB4qnshx98JNPSnIbc",
+   "name": "Ivri Anochi (I'm a Jew and I'm Proud)",
+   "album": "Fill the World With Light",
+   "duration_ms": 254772
+  },
+  {
+   "uri": "spotify:track:50RXJssyPM8LU3LutZkNbi",
+   "name": "Yama",
+   "album": "Yama",
+   "duration_ms": 205191
+  },
+  {
+   "uri": "spotify:track:3UVEcUQ1OT0hYGRm0w4Iec",
+   "name": "Am Yisrael Chai - עם ישראל חי",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 75882
+  },
+  {
+   "uri": "spotify:track:3oCvOyCxrxq3ChPQtoXQOy",
+   "name": "I'm A Lucky Ducky!",
+   "album": "I'm A Lucky Ducky!",
+   "duration_ms": 212018
+  },
+  {
+   "uri": "spotify:track:6oR1tMGwtNyeNLtyjEaLOX",
+   "name": "Adios",
+   "album": "Homeward Bound",
+   "duration_ms": 154272
+  },
+  {
+   "uri": "spotify:track:19PSjvc0LCn0FUh5n5H2Om",
+   "name": "Homeward Bound",
+   "album": "Homeward Bound",
+   "duration_ms": 216769
+  },
+  {
+   "uri": "spotify:track:60LQPSdpGpjrrEyUGgWEVp",
+   "name": "Al Tira Yisrael - אל תירא ישראל",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 50390
+  },
+  {
+   "uri": "spotify:track:4gctZgfLjehpzN9v30ri8o",
+   "name": "Tatty My King",
+   "album": "Whispers Of The Heart 2",
+   "duration_ms": 266753
+  },
+  {
+   "uri": "spotify:track:1ICZCPB8fHNDbfYBVglSym",
+   "name": "Ivdu Es Hashem B'simcha - עבדו",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 62745
+  },
+  {
+   "uri": "spotify:track:13X5KTU4ejyr4bjvG45czy",
+   "name": "Lo Lefached",
+   "album": "Lo Lefached",
+   "duration_ms": 242000
+  },
+  {
+   "uri": "spotify:track:4IJ17L2hU8czKkVhZVcuZN",
+   "name": "Maaminim Bnei Maaminim - מאמינים",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 74902
+  },
+  {
+   "uri": "spotify:track:1cOFR6M1GQyuYSWB3nlXER",
+   "name": "Kulanu Nelech",
+   "album": "Kulanu Nelech",
+   "duration_ms": 236737
+  },
+  {
+   "uri": "spotify:track:3yhWUXqEGaOzsPKYj4VkMs",
+   "name": "Mi Shebeirach - מי שברך לחיילי צה\"ל",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 55796
+  },
+  {
+   "uri": "spotify:track:4TopeJulFfCmWHZkyKJqiH",
+   "name": "Hoshia Es Amecha - הושיעה את עמך",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 61143
+  },
+  {
+   "uri": "spotify:track:2w6JKbqbCYAEAWOy0UiQqc",
+   "name": "Bum Bum Bum",
+   "album": "Kol Haneshama Sheli",
+   "duration_ms": 234360
+  },
+  {
+   "uri": "spotify:track:0rQrh7js6ixGaAmYRnzWIi",
+   "name": "Kol Haolam Kulo - כל העולם כולו",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 75101
+  },
+  {
+   "uri": "spotify:track:3SEY9ohGXHwwtl54o7L8Hs",
+   "name": "Yisrael B'tach BaShem - ישראל בטח בה'",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 62941
+  },
+  {
+   "uri": "spotify:track:24DuVNHlDpxnEyeJtSUZ3P",
+   "name": "Shevet Achim Va'achayot - שבט אחים ואחיות",
+   "album": "Am Yisrael Chai",
+   "duration_ms": 41576
+  },
+  {
+   "uri": "spotify:track:6Ncdj2i4QdJPdHMp1WY2i1",
+   "name": "Kulam Sharim",
+   "album": "Fill the World With Light",
+   "duration_ms": 239151
+  }
+ ],
+ "05iRQUcipjT4IA9swuMIU5": [
+  {
+   "uri": "spotify:track:6Y75BjWw5WRqddORwRYAOu",
+   "name": "Fire",
+   "album": "Fire",
+   "duration_ms": 144878
+  },
+  {
+   "uri": "spotify:track:55lyxN2C7jyXsSXsamyuhD",
+   "name": "Boker Tov",
+   "album": "Hakol Mishamayim",
+   "duration_ms": 238092
+  },
+  {
+   "uri": "spotify:track:3uqTn2W8K3PPxiBusYoyOb",
+   "name": "Chaneinu",
+   "album": "Chaneinu / Just The Way You Are",
+   "duration_ms": 202105
+  },
+  {
+   "uri": "spotify:track:7JaKHKGjvFdNklZUV4xic1",
+   "name": "Ein Od Milvado",
+   "album": "Ein Od Milvado",
+   "duration_ms": 187800
+  },
+  {
+   "uri": "spotify:track:7qkbGhtZLKBHPqsNUVIiRQ",
+   "name": "Hakol Mishamayim",
+   "album": "Hakol Mishamayim",
+   "duration_ms": 223361
+  },
+  {
+   "uri": "spotify:track:368lS8cHUxKdXt2VRLiBpX",
+   "name": "Ani Yehudi",
+   "album": "Ani Yehudi",
+   "duration_ms": 208906
+  },
+  {
+   "uri": "spotify:track:5tycMT0PEdnmo02UPtaY9Y",
+   "name": "Ein Kelokeinu",
+   "album": "Yehei Rava",
+   "duration_ms": 178909
+  },
+  {
+   "uri": "spotify:track:6GsDa4LIA9CtaFvKFQINpB",
+   "name": "Tamid Yesh Siba",
+   "album": "Tamid Yesh Siba",
+   "duration_ms": 197112
+  },
+  {
+   "uri": "spotify:track:4ZLM2RNaLPacI8JxiU7XbS",
+   "name": "Dancing In The Rain",
+   "album": "Achas",
+   "duration_ms": 201925
+  },
+  {
+   "uri": "spotify:track:6ISqS9NCSeExL1x4VHmp38",
+   "name": "Ad D'lo Yada",
+   "album": "Ad D'lo Yada",
+   "duration_ms": 196190
+  },
+  {
+   "uri": "spotify:track:1xqvKYQCLASKZAALZTXwUR",
+   "name": "Schar Mitzvah",
+   "album": "Kol Haderech",
+   "duration_ms": 223164
+  },
+  {
+   "uri": "spotify:track:1RvUgmwNeYqwSa0ziQ61bQ",
+   "name": "ABBA",
+   "album": "ABBA",
+   "duration_ms": 212987
+  },
+  {
+   "uri": "spotify:track:0IiOOyfAarVGU5IEct2fbY",
+   "name": "Ashira",
+   "album": "Achas",
+   "duration_ms": 204280
+  },
+  {
+   "uri": "spotify:track:0TuLWm4RvSrIYGgdHUl5UC",
+   "name": "Friends",
+   "album": "Hakol Mishamayim",
+   "duration_ms": 214011
+  },
+  {
+   "uri": "spotify:track:5eAZkgHNR9Mw2fckS1I6hY",
+   "name": "One in a Million",
+   "album": "Hakol Mishamayim",
+   "duration_ms": 218204
+  },
+  {
+   "uri": "spotify:track:5gwPCdssHG0leA18Wussk5",
+   "name": "Machar",
+   "album": "Machar",
+   "duration_ms": 255157
+  },
+  {
+   "uri": "spotify:track:5bRHbwnrs6knPMsHToCtC3",
+   "name": "Ana Hashem",
+   "album": "Achas",
+   "duration_ms": 265088
+  },
+  {
+   "uri": "spotify:track:4wzeCmGAkpoaYo11DW7dEn",
+   "name": "Just The Way You Are",
+   "album": "Chaneinu / Just The Way You Are",
+   "duration_ms": 150697
+  },
+  {
+   "uri": "spotify:track:7c54SYCznJZ4XF9hyavpz4",
+   "name": "B'yachad",
+   "album": "Hakol Mishamayim",
+   "duration_ms": 273166
+  },
+  {
+   "uri": "spotify:track:0URGfPQLiB6JHBn9hwh2x9",
+   "name": "Kivinu",
+   "album": "Yehei Rava",
+   "duration_ms": 183414
+  }
+ ],
+ "343YYaA5MSjiZZ5cGyTr4u": [
+  {
+   "uri": "spotify:track:5F9TcMmOvnjVu7zCNWrJ7H",
+   "name": "לא המשוגע היחידי",
+   "album": "לא המשוגע היחידי",
+   "duration_ms": 233385
+  },
+  {
+   "uri": "spotify:track:3UtM6GNI2CzKDH9XJqLpd1",
+   "name": "ויקיפדיה",
+   "album": "ויקיפדיה",
+   "duration_ms": 213306
+  },
+  {
+   "uri": "spotify:track:5VksXB2EcN8EQFaM2U3vIR",
+   "name": "השיבנו",
+   "album": "השיבנו",
+   "duration_ms": 236265
+  },
+  {
+   "uri": "spotify:track:1tXzzlOmuHJjwMu0mzhEw7",
+   "name": "אהבת חיי",
+   "album": "לא המשוגע היחידי",
+   "duration_ms": 207715
+  },
+  {
+   "uri": "spotify:track:1SFtkFm8LFUozazhrBWHzx",
+   "name": "לב אמיץ",
+   "album": "לא המשוגע היחידי",
+   "duration_ms": 183607
+  },
+  {
+   "uri": "spotify:track:6MwsuFL115vgX9mCHlTZyU",
+   "name": "הלוואי (עם פאר טסי)",
+   "album": "הלוואי",
+   "duration_ms": 229166
+  },
+  {
+   "uri": "spotify:track:0fmN0j1zR19WR8sPjAmpbK",
+   "name": "איזון",
+   "album": "איזון",
+   "duration_ms": 214813
+  },
+  {
+   "uri": "spotify:track:6CigFr4wjiHr4VSiKTZfpO",
+   "name": "ממך עד אליי",
+   "album": "איזון",
+   "duration_ms": 186506
+  },
+  {
+   "uri": "spotify:track:23uurlntEUAtekNeJ2tHQu",
+   "name": "למה לנו לרדוף",
+   "album": "איזון",
+   "duration_ms": 174653
+  },
+  {
+   "uri": "spotify:track:3mQXApXie1224ZGm0jk5aG",
+   "name": "גל עיניי",
+   "album": "לא המשוגע היחידי",
+   "duration_ms": 190959
+  },
+  {
+   "uri": "spotify:track:5KFUZnFOz4HY4uRfZKcXCk",
+   "name": "חולם כמו יוסף",
+   "album": "חולם כמו יוסף",
+   "duration_ms": 208500
+  },
+  {
+   "uri": "spotify:track:3DNUgZ8SOC7wE4wcs15Ad8",
+   "name": "את ההוכחה שיש אלוהים",
+   "album": "לא המשוגע היחידי",
+   "duration_ms": 236146
+  },
+  {
+   "uri": "spotify:track:2cDJbr9zb9nx1bB2upCz13",
+   "name": "חנניה",
+   "album": "חנניה",
+   "duration_ms": 211320
+  },
+  {
+   "uri": "spotify:track:2QRnt06N6pOC8PwZnGbJB4",
+   "name": "סתכלי למעלה",
+   "album": "לא המשוגע היחידי",
+   "duration_ms": 200420
+  },
+  {
+   "uri": "spotify:track:6UGXKQw2JzoZ3R27txXljp",
+   "name": "שבורי לב",
+   "album": "שבורי לב",
+   "duration_ms": 234923
+  },
+  {
+   "uri": "spotify:track:1iqFD52dqVgLGJq74we3RW",
+   "name": "אמן על הילדים",
+   "album": "אמן על הילדים",
+   "duration_ms": 218125
+  },
+  {
+   "uri": "spotify:track:3RlUyFCBbqM62dOs0sNWlH",
+   "name": "עטלף עיוור",
+   "album": "עטלף עיוור",
+   "duration_ms": 229411
+  },
+  {
+   "uri": "spotify:track:5Cf7f7XD97PYEUWEEb7mcQ",
+   "name": "חוץ מכדורגל",
+   "album": "יש כאן יותר מזה",
+   "duration_ms": 263770
+  },
+  {
+   "uri": "spotify:track:3goZ62CrwCQ69gSVfe2W2g",
+   "name": "היום קמתי שמח",
+   "album": "לא המשוגע היחידי",
+   "duration_ms": 228208
+  }
+ ],
+ "2gY5qyOAJApJoxr9FGt7Qn": [
+  {
+   "uri": "spotify:track:5C27WrGA0j7Ty82Ac3RYCq",
+   "name": "דרך חדשה",
+   "album": "דרך חדשה",
+   "duration_ms": 176390
+  },
+  {
+   "uri": "spotify:track:53SNOTE9oZnNy2TuP2KWWM",
+   "name": "באתי לגני",
+   "album": "באתי לגני",
+   "duration_ms": 257593
+  },
+  {
+   "uri": "spotify:track:2r26NRDoEvtiiaUhPp3OUq",
+   "name": "אם תחנה",
+   "album": "כולנו יחד",
+   "duration_ms": 236800
+  },
+  {
+   "uri": "spotify:track:0NEk2dtq9xen9lrnJC9wS5",
+   "name": "רגעים",
+   "album": "רגעים",
+   "duration_ms": 176330
+  },
+  {
+   "uri": "spotify:track:7wtM5dwWAMR55LO8rlMPaO",
+   "name": "אבקש פניך",
+   "album": "אבקש פניך",
+   "duration_ms": 242300
+  },
+  {
+   "uri": "spotify:track:1yexTnop0VBIhXwJOY17vB",
+   "name": "לא תנצחו אותי",
+   "album": "כולנו יחד",
+   "duration_ms": 223216
+  },
+  {
+   "uri": "spotify:track:5wWwPwpkD5sr62ZSDpiXjF",
+   "name": "על כפיו יבוא",
+   "album": "נער הייתי",
+   "duration_ms": 209554
+  },
+  {
+   "uri": "spotify:track:52AjTju8qN3OSIQqmiJxHO",
+   "name": "אהבת חינם",
+   "album": "אהבת חינם",
+   "duration_ms": 219689
+  },
+  {
+   "uri": "spotify:track:0rf052sngRNErlJ6qG3hcE",
+   "name": "תן לנו סימן",
+   "album": "כולנו יחד",
+   "duration_ms": 219167
+  },
+  {
+   "uri": "spotify:track:14hh84GbTeQMSb73HXC4Mq",
+   "name": "אחות קטנה",
+   "album": "אחות קטנה",
+   "duration_ms": 259002
+  },
+  {
+   "uri": "spotify:track:59hjgmU488mmF0bgZqZfOk",
+   "name": "וזכני",
+   "album": "יונתן שינפלד והפסנתר",
+   "duration_ms": 286641
+  },
+  {
+   "uri": "spotify:track:5inKMuOjG07dugdBnM9chv",
+   "name": "מכוון גבוה",
+   "album": "מכוון גבוה",
+   "duration_ms": 213200
+  },
+  {
+   "uri": "spotify:track:4RwXGSsu8zP829wN12EMAp",
+   "name": "מציאות אחרת",
+   "album": "מציאות אחרת",
+   "duration_ms": 166000
+  },
+  {
+   "uri": "spotify:track:6ESlDQz6E70kvrc2JNc0V7",
+   "name": "רפא נא",
+   "album": "רפא נא",
+   "duration_ms": 215534
+  },
+  {
+   "uri": "spotify:track:523lUqiDsKYAdMxkQWQjjB",
+   "name": "נחם ה'",
+   "album": "נחם ה'",
+   "duration_ms": 217346
+  },
+  {
+   "uri": "spotify:track:3SvO3ZIJwAUPMrb6mpSsmA",
+   "name": "שירת העשבים / התבודדות",
+   "album": "נער הייתי",
+   "duration_ms": 206288
+  },
+  {
+   "uri": "spotify:track:7i8YQzJc7gEGuH1SFK5l9f",
+   "name": "מחכה בבית",
+   "album": "מחכה בבית",
+   "duration_ms": 179645
+  },
+  {
+   "uri": "spotify:track:3qble55RItTGhFydw8waf5",
+   "name": "חמול",
+   "album": "יונתן שינפלד והפסנתר",
+   "duration_ms": 300878
+  },
+  {
+   "uri": "spotify:track:51GJtb9H6Juzo2DvRRobTK",
+   "name": "Just Do It",
+   "album": "נער הייתי",
+   "duration_ms": 177867
+  },
+  {
+   "uri": "spotify:track:1DTZjjvaTzfsL3FOtcd3wd",
+   "name": "כולנו יחד",
+   "album": "כולנו יחד",
+   "duration_ms": 230217
+  }
+ ],
+ "6IDzwVsZdjzXYLF7IDENaq": [
+  {
+   "uri": "spotify:track:4Ab50SeJqPncCPgrCF2n6Q",
+   "name": "תדבר איתו",
+   "album": "תדבר איתו",
+   "duration_ms": 219099
+  },
+  {
+   "uri": "spotify:track:68HxiV7cF5dmxx8PAuvxrr",
+   "name": "אבא טוב",
+   "album": "אבא טוב",
+   "duration_ms": 192182
+  },
+  {
+   "uri": "spotify:track:7htgrq9cyu40G47ijNOZfX",
+   "name": "הקב\"ה איתי",
+   "album": "הקב\"ה איתי",
+   "duration_ms": 200803
+  },
+  {
+   "uri": "spotify:track:3vcnXb3mZjs9GkroaRYPKp",
+   "name": "להתקרב",
+   "album": "להתקרב",
+   "duration_ms": 209162
+  },
+  {
+   "uri": "spotify:track:3RSL1uWHjB5mORreo4SXde",
+   "name": "עברתי בחושך",
+   "album": "עברתי בחושך",
+   "duration_ms": 223294
+  },
+  {
+   "uri": "spotify:track:7g3PzOvBARgIXsO6MDDpdE",
+   "name": "הילד הזה",
+   "album": "הילד הזה",
+   "duration_ms": 212636
+  },
+  {
+   "uri": "spotify:track:0TqjY1H83MVd52kbnfD6iA",
+   "name": "באה השמחה",
+   "album": "תדבר איתו",
+   "duration_ms": 194089
+  },
+  {
+   "uri": "spotify:track:4h8hVBmQ1nOB8G3uI3IHTo",
+   "name": "תסתכל לשמיים",
+   "album": "הילד הזה",
+   "duration_ms": 186331
+  },
+  {
+   "uri": "spotify:track:0mbManKMPfTDLqy7nmQJF2",
+   "name": "אמת - ווקאלי",
+   "album": "ווקאלי",
+   "duration_ms": 266292
+  },
+  {
+   "uri": "spotify:track:4D6WfPURMVnJTxKSxH9brQ",
+   "name": "נשאר רק הלב",
+   "album": "נשאר רק הלב",
+   "duration_ms": 223503
+  },
+  {
+   "uri": "spotify:track:09Rvb2EqENtIvMYkoavTab",
+   "name": "הקב\"ה איתי - ווקאלי",
+   "album": "ווקאלי",
+   "duration_ms": 180271
+  },
+  {
+   "uri": "spotify:track:0vuOvxjU3BKXsSHiL3RCd1",
+   "name": "תסתכל לשמים - ווקאלי",
+   "album": "ווקאלי",
+   "duration_ms": 186853
+  },
+  {
+   "uri": "spotify:track:7fCnnuZdFv9rNH474UB3af",
+   "name": "גיבור עולם",
+   "album": "הילד הזה",
+   "duration_ms": 274782
+  },
+  {
+   "uri": "spotify:track:3hQdwqfpKrcSKlisuRQEam",
+   "name": "הילד הזה - ווקאלי",
+   "album": "ווקאלי",
+   "duration_ms": 215275
+  },
+  {
+   "uri": "spotify:track:0whUU2ZdGU3QoYyiIkJ56Z",
+   "name": "באותה השעה",
+   "album": "באותה השעה",
+   "duration_ms": 230373
+  }
+ ],
+ "3Y0YvS2crBLVS9eA5jX8Ux": [
+  {
+   "uri": "spotify:track:319NJBjLRvsrV1vA7UUVBy",
+   "name": "דור של אמונה",
+   "album": "דור של אמונה",
+   "duration_ms": 189836
+  },
+  {
+   "uri": "spotify:track:4IvbyHZ8bLHtjtSjUwx4qS",
+   "name": "שיר פשוט",
+   "album": "ניצוץ יהודי",
+   "duration_ms": 209310
+  },
+  {
+   "uri": "spotify:track:4OhkMdiM3DmQGwMdCmD5Jg",
+   "name": "מחרוזת להיטים (עם דוד ביתן)",
+   "album": "מחרוזת להיטים",
+   "duration_ms": 480833
+  },
+  {
+   "uri": "spotify:track:2LaLi0ORsSIZNRGsfGHQjW",
+   "name": "תחזור הביתה",
+   "album": "רגעים גדולים",
+   "duration_ms": 179000
+  },
+  {
+   "uri": "spotify:track:1QkGvI8T6GPKA8IfVBmedS",
+   "name": "יגיע טוב היום",
+   "album": "יגיע טוב היום",
+   "duration_ms": 189000
+  },
+  {
+   "uri": "spotify:track:5Yg15at6QejhjkgCE4pCeh",
+   "name": "שמחה שלמה",
+   "album": "שמחה שלמה",
+   "duration_ms": 221022
+  },
+  {
+   "uri": "spotify:track:1psJwxjhQtBAmMGwDOiZBw",
+   "name": "לנסות (עם גד אלבז)",
+   "album": "רגעים גדולים",
+   "duration_ms": 179000
+  },
+  {
+   "uri": "spotify:track:2OiiWzdXNquAjq3witIBNL",
+   "name": "בדרך אמונה בחרתי",
+   "album": "בדרך אמונה בחרתי",
+   "duration_ms": 142363
+  },
+  {
+   "uri": "spotify:track:77Y36taipJw5jsl7BNGtTM",
+   "name": "עד אחרי הנצח - Live",
+   "album": "בנייני האומה ירושלים (Live)",
+   "duration_ms": 219500
+  },
+  {
+   "uri": "spotify:track:4t8yKo3A6nNEHCib4nDbC0",
+   "name": "יגיע טוב היום - Maor Cohen Remix",
+   "album": "יגיע טוב היום (Remix)",
+   "duration_ms": 204000
+  },
+  {
+   "uri": "spotify:track:3whye7AfV1YaUOtX0t5wFG",
+   "name": "תבוא",
+   "album": "תבוא",
+   "duration_ms": 207567
+  },
+  {
+   "uri": "spotify:track:6FcEeVGQNetcDQETG2MA4j",
+   "name": "תאיר את דרכי",
+   "album": "ניצוץ יהודי",
+   "duration_ms": 195693
+  },
+  {
+   "uri": "spotify:track:6Qv8Azg03xFuVezbZ9EwwO",
+   "name": "להיות שלם",
+   "album": "להיות שלם",
+   "duration_ms": 209000
+  },
+  {
+   "uri": "spotify:track:2Cz9RxCBVX7d5LcFqjSjS5",
+   "name": "ניצוץ יהודי",
+   "album": "ניצוץ יהודי",
+   "duration_ms": 234808
+  }
+ ],
+ "4OqhRVs3bnTqs7ugKApPp9": [
+  {
+   "uri": "spotify:track:6QiQ6kF4UfNrNVnlHCJnX6",
+   "name": "לא לבד (עם ים רפאלי)",
+   "album": "לא לבד",
+   "duration_ms": 219512
+  },
+  {
+   "uri": "spotify:track:49AnekuWyxsjdJu159AvZM",
+   "name": "כמה טוב ה'",
+   "album": "כמה טוב ה'",
+   "duration_ms": 189631
+  },
+  {
+   "uri": "spotify:track:0KnhxRvwjK3bFqu1ZPvHDg",
+   "name": "רוצה להיות אבא",
+   "album": "רוצה להיות אבא",
+   "duration_ms": 179677
+  },
+  {
+   "uri": "spotify:track:6ulmBhPswVCDCf0iiHVX0e",
+   "name": "קומזיץ 1 ימים הנוראים",
+   "album": "קומזיץ 1 ימים הנוראים",
+   "duration_ms": 421067
+  },
+  {
+   "uri": "spotify:track:675Zp3W44r2qtc1NwDyZH9",
+   "name": "אזעקות של אמונה (עם בני הורביץ)",
+   "album": "אזעקות של אמונה",
+   "duration_ms": 181995
+  },
+  {
+   "uri": "spotify:track:21bvF6dKBH0QxIETOlETXm",
+   "name": "יאללה לרקוד",
+   "album": "יאללה לרקוד",
+   "duration_ms": 178277
+  },
+  {
+   "uri": "spotify:track:3K6idwCWAE8yvvfU4rcmud",
+   "name": "קול דודי",
+   "album": "קול דודי",
+   "duration_ms": 231712
+  },
+  {
+   "uri": "spotify:track:6UBgcKritbqk5Vx1DEUmjR",
+   "name": "בא לי",
+   "album": "בא לי",
+   "duration_ms": 155534
+  },
+  {
+   "uri": "spotify:track:69QMCwGLPtShJpPPkHhao0",
+   "name": "יהודי אף פעם לא לבד",
+   "album": "יהודי אף פעם לא לבד",
+   "duration_ms": 218530
+  },
+  {
+   "uri": "spotify:track:5yTFdfQFkjINNFuKrUZuoE",
+   "name": "קומזיץ 4 ראש השנה",
+   "album": "קומזיץ 4 ראש השנה",
+   "duration_ms": 474704
+  },
+  {
+   "uri": "spotify:track:5ChRALDBLnw7siHg94Xor3",
+   "name": "קומזיץ 3 ימים הנוראים",
+   "album": "קומזיץ 3 ימים הנוראים",
+   "duration_ms": 457795
+  },
+  {
+   "uri": "spotify:track:1CrGluHzZN6eM36cca23bg",
+   "name": "הושענא (עם ארי גולדוואג)",
+   "album": "הושענא",
+   "duration_ms": 173813
+  },
+  {
+   "uri": "spotify:track:7aBsSd56fQnPkYr0mXG4sI",
+   "name": "קומזיץ 5 הימים הנוראים",
+   "album": "קומזיץ 5 הימים הנוראים",
+   "duration_ms": 584481
+  },
+  {
+   "uri": "spotify:track:3wzwh6be9poABjFCdkst0r",
+   "name": "השם ישמור",
+   "album": "השם ישמור",
+   "duration_ms": 195324
+  },
+  {
+   "uri": "spotify:track:7pgdUjuFGRw6zgIy55GLdu",
+   "name": "בלעדיך",
+   "album": "פרופורציה",
+   "duration_ms": 171000
+  },
+  {
+   "uri": "spotify:track:09ujY9lbgEYQkbLJxR5rBZ",
+   "name": "ואז יהיה יותר טוב",
+   "album": "ואז יהיה יותר טוב",
+   "duration_ms": 169971
+  },
+  {
+   "uri": "spotify:track:3cKZyxUVs7XEYd11JJ0kAA",
+   "name": "קומזיץ 2 הלל וגאולה",
+   "album": "קומזיץ 2 הלל וגאולה",
+   "duration_ms": 449551
+  }
+ ],
+ "5GCh3ZazIVWg8eKb5Akv0q": [
+  {
+   "uri": "spotify:track:12pGzBnlpZzmwUH90EkuYK",
+   "name": "כמה טוב שנפגשנו",
+   "album": "כמה טוב שנפגשנו",
+   "duration_ms": 263601
+  },
+  {
+   "uri": "spotify:track:0X3V93Zs8EF6uqUaQuIDXx",
+   "name": "ירושלים שבלב",
+   "album": "כמה טוב שנפגשנו",
+   "duration_ms": 223817
+  },
+  {
+   "uri": "spotify:track:5p0n1FnLSEKgA6cGdobYU7",
+   "name": "ושמחת בחגך (עם ליאור נרקיס)",
+   "album": "ושמחת בחגך",
+   "duration_ms": 149187
+  },
+  {
+   "uri": "spotify:track:74TDOvNO02xCRGTaB8LTKf",
+   "name": "פשוט אנשים",
+   "album": "כמה טוב שנפגשנו",
+   "duration_ms": 222145
+  },
+  {
+   "uri": "spotify:track:7c57uzUnMDUsJYIDAeBoYF",
+   "name": "אוטוטו",
+   "album": "אוטוטו",
+   "duration_ms": 228649
+  },
+  {
+   "uri": "spotify:track:57krgx3TMNxq1OmLeC0fRl",
+   "name": "רק תפילה (עם בני פרידמן ואיציק דדיה)",
+   "album": "Avraham Fried's Hebrew Hits",
+   "duration_ms": 136050
+  },
+  {
+   "uri": "spotify:track:3JfS1PpVR6iTqCelnGrJUo",
+   "name": "אבא",
+   "album": "אבא",
+   "duration_ms": 235493
+  },
+  {
+   "uri": "spotify:track:2ppfUi191Td6LmS32NXr3M",
+   "name": "בוקר טוב רבש\"ע",
+   "album": "בוקר טוב רבש\"ע",
+   "duration_ms": 278493
+  },
+  {
+   "uri": "spotify:track:7yB4Y6B0r5kOGoq27ctuF6",
+   "name": "כי אנו עמך (עם ישי ריבו)",
+   "album": "כי אנו עמך (לייב)",
+   "duration_ms": 138767
+  },
+  {
+   "uri": "spotify:track:66T48aitEgCEnmkRB4uzXM",
+   "name": "שירת העשבים",
+   "album": "כמה טוב שנפגשנו",
+   "duration_ms": 235650
+  },
+  {
+   "uri": "spotify:track:0xL6jJmeBoGFvAWjF6Hb3R",
+   "name": "שלח לי כח",
+   "album": "כמה טוב שנפגשנו",
+   "duration_ms": 258429
+  },
+  {
+   "uri": "spotify:track:07suiwvFVOmkrvxtyG7V1I",
+   "name": "אל תיפול (עם חיים ישראל)",
+   "album": "אל תיפול",
+   "duration_ms": 282767
+  },
+  {
+   "uri": "spotify:track:1SAftVfBD9vcEIfaAOLFah",
+   "name": "ניגון חסידי - צמח צדק",
+   "album": "פרויקט צמאה",
+   "duration_ms": 152195
+  },
+  {
+   "uri": "spotify:track:6e0dPOtmoJ4Ai3xp7ZbieQ",
+   "name": "כי הרבית",
+   "album": "כי הרבית",
+   "duration_ms": 311222
+  },
+  {
+   "uri": "spotify:track:43hGGykDbltr6uJNXjaYfk",
+   "name": "Hineni B'yodcho",
+   "album": "Bring the House Down",
+   "duration_ms": 391024
+  }
+ ],
+ "7wCViOhA0Yp7lOwZUqEYJJ": [
+  {
+   "uri": "spotify:track:4rQzIMjPW9nuF92hRDNcPi",
+   "name": "שבת קודש",
+   "album": "אוצרות יהודיים א",
+   "duration_ms": 198243
+  },
+  {
+   "uri": "spotify:track:6z2XZJZgukDduBFE145bRN",
+   "name": "עלה קטן",
+   "album": "אוצרות יהודיים א",
+   "duration_ms": 257670
+  },
+  {
+   "uri": "spotify:track:2IFwwkUVBiBcrBjWL6nFL4",
+   "name": "יעקב",
+   "album": "אוצרות יהודיים א",
+   "duration_ms": 599327
+  }
+ ],
+ "0NLEL3BBW71Oshh5R7wpJl": [
+  {
+   "uri": "spotify:track:24L1ca9f1zeFaLEzm8bTdN",
+   "name": "ילד טרמפולינה (עם שי וינר)",
+   "album": "ילד טרמפולינה",
+   "duration_ms": 228837
+  }
+ ],
+ "3VTm1513t2LL1mSKzzyQuj": [
+  {
+   "uri": "spotify:track:0cUUFdacQRXeEyn6U1sm95",
+   "name": "נפשי (עם מוטי שטיינמץ)",
+   "album": "נפשי",
+   "duration_ms": 266310
+  }
+ ]
 }
