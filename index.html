@@ -273,7 +273,7 @@ async function api(path, opts = {}, retry = true){
   if (body) headers['Content-Type'] = 'application/json';
   const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401 && retry){ await refresh(); return api(path, opts, false); }
-  if (r.status === 429){ throw Object.assign(new Error('יותר מדי בקשות, נסי שוב בעוד רגע'), {status:429}); }
+  if (r.status === 429){ throw Object.assign(new Error('יותר מדי בקשות, נסי שוב בעוד רגע'), { status:429, retryAfter: +(r.headers.get('Retry-After') || 0) }); }
   const text = await r.text();
   let j = null; try { j = text ? JSON.parse(text) : null; } catch(e) {}
   if (!r.ok){
@@ -472,10 +472,17 @@ const norm = s => String(s || '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(
 const TTL = { art: 24*3600e3, show: 3*3600e3, list: 24*3600e3 };
 function cget(k, ttl){ try{ const v = JSON.parse(store.get(k) || 'null'); return v && Date.now() - v.t < ttl ? v.d : null; }catch(e){ return null; } }
 function cset(k, d){ store.set(k, JSON.stringify({ t: Date.now(), d })); }
-async function apiRetry(path, opts){
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let inFlight = 0, pauseBg = 0, waitUntil = 0;
+async function apiRetry(path, opts, bg){
   for (let i = 0; ; i++){
+    while (inFlight >= 2 || (bg && pauseBg > 0) || Date.now() < waitUntil) await sleep(150);
+    inFlight++;
     try{ return await api(path, opts); }
-    catch(e){ if (e.status === 429 && i < 4){ await new Promise(r => setTimeout(r, 2500 * (i + 1))); continue; } throw e; }
+    catch(e){
+      if (e.status === 429 && i < 6){ waitUntil = Date.now() + Math.max(2000, (e.retryAfter || 0) * 1000 + 500); continue; }
+      throw e;
+    }finally{ inFlight--; }
   }
 }
 const slim = (t, albumName) => ({ uri:t.uri, name:t.name, artists:(t.artists || []).map(a => ({ name:a.name })),
@@ -483,20 +490,20 @@ const slim = (t, albumName) => ({ uri:t.uri, name:t.name, artists:(t.artists || 
 const slimEp = (e, show) => ({ uri:e.uri, name:e.name, release_date:e.release_date, duration_ms:e.duration_ms, show });
 const dedupe = (arr, key) => { const seen = new Set(); return arr.filter(x => { const k = norm(key(x)); if (seen.has(k)) return false; seen.add(k); return true; }); };
 
-async function artistTracks(a){
+async function artistTracks(a, bg){
   const ids = a.ids || [a.id], k = 'art_' + ids.join('_');
   const c = cget(k, TTL.art); if (c) return c;
   let albums = [];
   for (const id of ids){
-    let next = `/artists/${id}/albums?include_groups=album,single&limit=50&market=from_token`;
-    while (next){ const j = await apiRetry(next); albums = albums.concat((j.items || []).filter(Boolean)); next = j.next; }
+    let next = `/artists/${id}/albums?include_groups=album,single&limit=50`;
+    while (next){ const j = await apiRetry(next, undefined, bg); albums = albums.concat((j.items || []).filter(Boolean)); next = j.next; }
   }
   albums = dedupe(albums, x => x.name);
   let tracks = [];
   let failed = 0;
   for (let i = 0; i < albums.length; i += 20){
     try{
-      const j = await apiRetry('/albums', { query:{ ids: albums.slice(i, i + 20).map(x => x.id).join(','), market:'from_token' } });
+      const j = await apiRetry('/albums', { query:{ ids: albums.slice(i, i + 20).map(x => x.id).join(',') } }, bg);
       (j.albums || []).filter(Boolean).forEach(al => ((al.tracks && al.tracks.items) || []).filter(t => t && t.uri).forEach(t => tracks.push(slim(t, al.name))));
     }catch(e){ failed++; }
   }
@@ -506,7 +513,7 @@ async function artistTracks(a){
 }
 async function playlistTracks(p){
   const k = 'pl_' + p.id, c = cget(k, TTL.art); if (c) return c;
-  let tracks = [], next = `/playlists/${p.id}/tracks?limit=100&market=from_token`;
+  let tracks = [], next = `/playlists/${p.id}/tracks?limit=100`;
   while (next && tracks.length < 500){
     let j;
     try{ j = await apiRetry(next); }
@@ -520,7 +527,7 @@ async function singleTracks(){
   const k = 'tr_' + ALLOWED.tracks.join('_'), c = cget(k, TTL.art); if (c) return c;
   let tracks = [];
   for (let i = 0; i < ALLOWED.tracks.length; i += 50){
-    const j = await apiRetry('/tracks', { query:{ ids: ALLOWED.tracks.slice(i, i + 50).join(','), market:'from_token' } });
+    const j = await apiRetry('/tracks', { query:{ ids: ALLOWED.tracks.slice(i, i + 50).join(',') } });
     tracks = tracks.concat((j.tracks || []).filter(t => t && t.uri).map(t => slim(t)));
   }
   cset(k, tracks); return tracks;
@@ -529,13 +536,13 @@ async function approvedShows(){
   const c = cget('shows_ok', TTL.list); if (c) return c;
   const map = new Map();
   for (let i = 0; i < ALLOWED.shows.length; i += 50){
-    const j = await apiRetry('/shows', { query:{ ids: ALLOWED.shows.slice(i, i + 50).join(','), market:'from_token' } });
+    const j = await apiRetry('/shows', { query:{ ids: ALLOWED.shows.slice(i, i + 50).join(',') } });
     (j.shows || []).filter(Boolean).forEach(s => map.set(s.id, s));
   }
   for (const pub of ALLOWED.publishers){
     try{
       for (let off = 0; off < 200; off += 50){
-        const j = await apiRetry('/search', { query:{ q: pub, type:'show', limit:'50', offset:String(off), market:'from_token' } });
+        const j = await apiRetry('/search', { query:{ q: pub, type:'show', limit:'50', offset:String(off) } });
         const items = ((j.shows && j.shows.items) || []).filter(Boolean);
         items.forEach(s => { if (norm(s.publisher) === norm(pub)) map.set(s.id, s); });
         if (!(j.shows && j.shows.next) || !items.length) break;
@@ -547,7 +554,7 @@ async function approvedShows(){
 }
 async function showEpisodes(s){
   const k = 'ep_' + s.id, c = cget(k, TTL.show); if (c) return c;
-  let eps = [], next = `/shows/${s.id}/episodes?limit=50&market=from_token`;
+  let eps = [], next = `/shows/${s.id}/episodes?limit=50`;
   while (next && eps.length < 1000){ const j = await apiRetry(next); eps = eps.concat((j.items || []).filter(e => e && e.uri).map(e => slimEp(e, s.name))); next = j.next; }
   cset(k, eps); return eps;
 }
@@ -560,8 +567,8 @@ function entryList(){
   if (ALLOWED.tracks.length) list.push({ type:'tracks', name:'שירים בודדים', src:null });
   return list;
 }
-function entryTracks(en){
-  if (en.type === 'artist') return artistTracks(en.src);
+function entryTracks(en, bg){
+  if (en.type === 'artist') return artistTracks(en.src, bg);
   if (en.type === 'playlist') return playlistTracks(en.src);
   return singleTracks();
 }
@@ -583,12 +590,14 @@ async function openEntry(en){
   curEntry = en; kTracks = [];
   $('kidsBack').classList.remove('hidden');
   $('kidsList').innerHTML = '<div class="empty">טוען…</div>';
+  pauseBg++;
   try{
     kTracks = (await entryTracks(en)).map(t => en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t);
     if (curEntry !== en) return;
     $('kidsList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(en.name)}</b><span>${kTracks.length} שירים · לחיצה על שיר מנגנת אותו ואת הבאים אחריו</span></div></div>` +
       (kTracks.length ? rowsHTML(kTracks, 0) : '<div class="empty">אין שירים</div>');
   }catch(e){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את השירים<br><small dir="ltr">' + esc(e.message) + '</small></div>'; }
+  finally{ pauseBg--; }
 }
 let kIdx = { tracks:[], eps:[] }, kDone = false, kProg = { n:0, t:0 }, kSeen = new Set(), kErr = '';
 function buildIndex(){
@@ -598,7 +607,7 @@ function buildIndex(){
     kProg = { n:0, t: ents.length + 1 };
     for (const en of ents){
       try{
-        (await entryTracks(en)).forEach(t => { if (!kSeen.has(t.uri)){ kSeen.add(t.uri); kIdx.tracks.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t); } });
+        (await entryTracks(en, true)).forEach(t => { if (!kSeen.has(t.uri)){ kSeen.add(t.uri); kIdx.tracks.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t); } });
       }catch(e){ kErr = e.message || String(e); }
       kProg.n++; onIndexProgress();
     }
@@ -682,17 +691,19 @@ function renderEps(){
 }
 async function loadEps(){
   if (!epNext) return;
+  pauseBg++;
   try{
-    const j = await api(epNext);
+    const j = await apiRetry(epNext);
     eps = eps.concat((j.items || []).filter(Boolean)); epNext = j.next;
     renderEps();
   }catch(e){ toast(e.message); }
+  finally{ pauseBg--; }
 }
 $('showList').addEventListener('click', e => {
   const r = e.target.closest('.row'); if (!r || r.dataset.i == null) return;
   const i = +r.dataset.i;
   if (!curShow){
-    curShow = shows[i]; eps = []; epNext = `/shows/${curShow.id}/episodes?limit=50&market=from_token`;
+    curShow = shows[i]; eps = []; epNext = `/shows/${curShow.id}/episodes?limit=50`;
     $('showList').innerHTML = '<div class="empty">טוען…</div>'; loadEps();
   } else {
     play({ uris: eps.slice(i, i + 50).map(x => x.uri) });
@@ -729,7 +740,7 @@ $('logout').onclick = logout;
   $('appView').classList.remove('hidden'); $('bar').classList.remove('hidden');
   if (FULL) $('logout').classList.remove('hidden');
   loadSDK(); refreshDevices(); poll(); selectTab('kids');
-  setInterval(poll, 3000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
+  setInterval(poll, 5000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
 })();
 </script>
 </body>
