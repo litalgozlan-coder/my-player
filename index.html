@@ -496,7 +496,7 @@ const slimEp = (e, show) => ({ uri:e.uri, name:e.name, release_date:e.release_da
 const dedupe = (arr, key) => { const seen = new Set(); return arr.filter(x => { const k = norm(key(x)); if (seen.has(k)) return false; seen.add(k); return true; }); };
 
 let catalogBlocked = cget('catalogBlocked', 24*3600e3) === true;
-function blockedBy(e){ if (e && e.status === 403){ catalogBlocked = true; cset('catalogBlocked', true); return true; } return false; }
+function blockedBy(e){ if (e && (e.status === 403 || e.status === 0 || e.status >= 500)){ catalogBlocked = true; cset('catalogBlocked', true); } return true; }
 
 /* חיפוש בספוטיפיי עם דפדוף */
 async function searchAll(q, type, max, bg){
@@ -513,7 +513,7 @@ async function searchAll(q, type, max, bg){
 async function artistTracks(a, bg){
   const ids = a.ids || [a.id], k = 'art_' + ids.join('_');
   const c = cget(k, TTL.art); if (c) return c;
-  let tracks = [];
+  let tracks = [], useSearch = false;
   if (!catalogBlocked){
     try{
       let albums = [];
@@ -526,9 +526,9 @@ async function artistTracks(a, bg){
         const j = await apiRetry('/albums', { query:{ ids: albums.slice(i, i + 20).map(x => x.id).join(',') } }, bg);
         (j.albums || []).filter(Boolean).forEach(al => ((al.tracks && al.tracks.items) || []).filter(t => t && t.uri).forEach(t => tracks.push(slim(t, al.name))));
       }
-    }catch(e){ if (!blockedBy(e)) throw e; tracks = []; }
+    }catch(e){ blockedBy(e); tracks = []; useSearch = true; }
   }
-  if (catalogBlocked){
+  if (catalogBlocked || useSearch){
     for (const name of (a.q || [a.name])){
       const found = await searchAll('artist:"' + name + '"', 'track', 500, bg);
       found.filter(t => t && t.uri && (t.artists || []).some(x => ids.includes(x.id))).forEach(t => tracks.push(slim(t)));
@@ -552,16 +552,16 @@ async function playlistTracks(p){
 async function singleTracks(bg){
   if (!ALLOWED.tracks.length) return [];
   const ids = ALLOWED.tracks.map(t => t.id), k = 'tr_' + ids.join('_'), c = cget(k, TTL.art); if (c) return c;
-  let tracks = [];
+  let tracks = [], useSearch = false;
   if (!catalogBlocked){
     try{
       for (let i = 0; i < ids.length; i += 50){
         const j = await apiRetry('/tracks', { query:{ ids: ids.slice(i, i + 50).join(',') } }, bg);
         tracks = tracks.concat((j.tracks || []).filter(t => t && t.uri).map(t => slim(t)));
       }
-    }catch(e){ if (!blockedBy(e)) throw e; tracks = []; }
+    }catch(e){ blockedBy(e); tracks = []; useSearch = true; }
   }
-  if (catalogBlocked){
+  if (catalogBlocked || useSearch){
     for (const t of ALLOWED.tracks){
       try{
         const found = await searchAll(t.q, 'track', 50, bg);
@@ -600,14 +600,14 @@ async function approvedShows(bg){
 }
 async function showEpisodes(s, bg){
   const k = 'ep_' + s.id, c = cget(k, TTL.show); if (c) return c;
-  let eps = [];
+  let eps = [], useSearch = false;
   if (!catalogBlocked){
     try{
       let next = `/shows/${s.id}/episodes?limit=50`;
       while (next && eps.length < 1000){ const j = await apiRetry(next, undefined, bg); eps = eps.concat((j.items || []).filter(e => e && e.uri).map(e => slimEp(e, s.name))); next = j.next; }
-    }catch(e){ if (!blockedBy(e)) throw e; eps = []; }
+    }catch(e){ blockedBy(e); eps = []; useSearch = true; }
   }
-  if (catalogBlocked){
+  if (catalogBlocked || useSearch){
     const nm = norm(s.name);
     const found = await searchAll(s.name, 'episode', 300, bg);
     found.filter(e => e && e.uri && norm(e.name).includes(nm)).forEach(e => eps.push(slimEp(e, s.name)));
