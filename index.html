@@ -583,9 +583,9 @@ async function openEntry(en){
     if (curEntry !== en) return;
     $('kidsList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(en.name)}</b><span>${kTracks.length} שירים · לחיצה על שיר מנגנת אותו ואת הבאים אחריו</span></div></div>` +
       (kTracks.length ? rowsHTML(kTracks, 0) : '<div class="empty">אין שירים</div>');
-  }catch(e){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את השירים</div>'; toast(e.message); }
+  }catch(e){ $('kidsList').innerHTML = '<div class="empty">לא ניתן לטעון את השירים<br><small dir="ltr">' + esc(e.message) + '</small></div>'; }
 }
-let kIdx = { tracks:[], eps:[] }, kDone = false, kProg = { n:0, t:0 }, kSeen = new Set();
+let kIdx = { tracks:[], eps:[] }, kDone = false, kProg = { n:0, t:0 }, kSeen = new Set(), kErr = '';
 function buildIndex(){
   if (kBuilding || kDone) return kBuilding;
   kBuilding = (async () => {
@@ -594,7 +594,7 @@ function buildIndex(){
     for (const en of ents){
       try{
         (await entryTracks(en)).forEach(t => { if (!kSeen.has(t.uri)){ kSeen.add(t.uri); kIdx.tracks.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t); } });
-      }catch(e){}
+      }catch(e){ kErr = e.message || String(e); }
       kProg.n++; onIndexProgress();
     }
     try{
@@ -607,7 +607,7 @@ function buildIndex(){
 }
 function onIndexProgress(){
   const st = $('kStatus');
-  if (st) st.textContent = kDone ? '' : `טוען את כל השירים ברקע… ${kProg.n}/${kProg.t}`;
+  if (st) st.textContent = kDone ? (kIdx.tracks.length ? '' : 'לא נטען אף שיר' + (kErr ? ': ' + kErr : '')) : `טוען את כל השירים ברקע… ${kProg.n}/${kProg.t}`;
   if (norm($('kq').value)) kidsSearch();
 }
 let kRes = { tracks:[], eps:[] };
