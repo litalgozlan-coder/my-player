@@ -10,6 +10,6 @@ git add -A
 git -c user.name="litalgozlan-coder" -c user.email="lital.gozlan@gmail.com" commit -q -m "$1
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01PmMRr1C3eWcZKBV5nhkF6c"
+Claude-Session: https://claude.ai/code/session_01Xj7ALZWMoteuB6isLEF76g"
 git push -q origin main
 echo "published version $V"

@@ -74,6 +74,10 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
   padding:10px 16px;border-radius:10px;font-size:14px;max-width:90vw;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
 .toast.show{opacity:1}
 .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:18px}
+.fav{flex:none;width:38px;height:38px;border-radius:50%;border:none;background:none;color:var(--line);font-size:20px;line-height:1;cursor:pointer;padding:0;margin:-6px -4px}
+.fav:hover{color:var(--muted)}
+.fav.on{color:var(--danger)}
+.note .btn{margin-top:8px}
 .hidden{display:none!important}
 </style>
 </head>
@@ -105,8 +109,10 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
       <button class="tab" data-tab="shows">פודקאסטים</button>
       <button class="tab" data-tab="search">חיפוש</button>
       <button class="tab" data-tab="playlists">הרשימות שלי</button>
-      <button class="tab" data-tab="liked">שירים שאהבתי</button>
+      <button class="tab" data-tab="liked">♥ מועדפים</button>
     </div>
+    <div id="favNote" class="note hidden">כדי שאפשר יהיה לסמן שירים כמועדפים (♥), צריך לאשר פעם אחת מחדש את החיבור לספוטיפיי.<br>
+      <button class="btn primary" id="favReauth">אישור מחדש</button></div>
 
     <section id="tab-kids" class="hidden">
       <input class="search" id="kq" type="search" placeholder="חיפוש שיר, זמר או פרק…" autocomplete="off">
@@ -127,6 +133,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
     </section>
 
     <section id="tab-liked" class="hidden">
+      <div class="foot" style="margin:-6px 0 10px">לחיצה על ♥ ליד שיר מוסיפה אותו לכאן, לחיצה נוספת מורידה</div>
       <div class="list" id="likedList"><div class="empty">טוען…</div></div>
       <button class="btn more hidden" id="likedMore">עוד שירים</button>
     </section>
@@ -157,11 +164,11 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261014224242';
+const VERSION = '20261016095900';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
-const SCOPES = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative user-library-read';
+const SCOPES = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative user-library-read user-library-modify';
 const TOKEN_URL = 'https://accounts.spotify.com/api/token';
 const API = 'https://api.spotify.com/v1';
 
@@ -176,7 +183,8 @@ const ALLOWED = {
     { id:'7m09aLn1QHUz5D7hqNnkW2', name:'יאיר אלייצור', q:['יאיר אלייצור'] },
     { id:'7CgBEyXbjOjFX3HiysHtXN', name:'שולי רנד', q:['Shuli Rand'] },
     { id:'343YYaA5MSjiZZ5cGyTr4u', name:'חנן בן ארי', q:['חנן בן ארי'] },
-    { id:'3VTm1513t2LL1mSKzzyQuj', name:'ישי ריבו', q:['Ishay Ribo'] },
+    { id:'3VTm1513t2LL1mSKzzyQuj', name:'ישי ריבו', q:['Ishay Ribo','ישי ריבו'] },
+    { id:'0VXG44vdmNhcTCipc2Iz3Z', name:'זושא', q:['Zusha','זושא'] },
     { id:'2gY5qyOAJApJoxr9FGt7Qn', name:'יונתן שינפלד', q:['יונתן שינפלד'] },
     { id:'5eVh2c6WuigJCj1WrHfnd5', name:'יעקב שוואקי', q:['Yaakov Shwekey'] },
     { id:'0NLEL3BBW71Oshh5R7wpJl', name:'שמחה פרידמן', q:['Simche Friedman'] },
@@ -195,7 +203,8 @@ const ALLOWED = {
   /* שירים בודדים מאושרים: מזהה השיר + טקסט לחיפוש (שם השיר והזמר) */
   tracks: [
     { id:'74pfNNxGlwSyokwtqxHcDa', q:'שקיעות אדומות עדן חסון' },
-    { id:'72W6xVQGdKHQl348KYgwg2', q:'שלמים עידן רפאל חביב' }
+    { id:'72W6xVQGdKHQl348KYgwg2', q:'שלמים עידן רפאל חביב' },
+    { id:'7nCe56CzvRKGqTIs5k1dYm', q:'עוף מוזר פאר טסי' }
   ],
   playlists: [],
   /* פודקאסטים: כל הפודקאסטים של המפיקים ברשימה, וגם המזהים הבודדים */
@@ -236,9 +245,12 @@ async function login(){
   location.href = 'https://accounts.spotify.com/authorize?' + p;
 }
 function saveToken(j){
-  tok = { access:j.access_token, refresh:j.refresh_token || (tok && tok.refresh), exp: Date.now() + ((j.expires_in||3600) - 60)*1000 };
+  tok = { access:j.access_token, refresh:j.refresh_token || (tok && tok.refresh), exp: Date.now() + ((j.expires_in||3600) - 60)*1000,
+    scope: j.scope || (tok && tok.scope) || '' };
   store.set('tok', JSON.stringify(tok));
 }
+/* האם ההרשאה שניתנה כוללת סימון מועדפים (חיבורים ישנים צריכים אישור מחדש פעם אחת) */
+const canFav = () => !!(tok && tok.scope && tok.scope.split(' ').includes('user-library-modify'));
 async function handleCallback(){
   const p = new URLSearchParams(location.search);
   if (!p.get('code') && !p.get('error')) return;
@@ -438,10 +450,12 @@ let volT;
 $('vol').addEventListener('input', () => { clearTimeout(volT); volT = setTimeout(() => ctl('/me/player/volume','PUT',{ volume_percent: $('vol').value }), 300); });
 
 /* ---------- רשימות שירים ---------- */
+const known = new Map(); /* שירים שהוצגו על המסך, לפי uri (לרשימת המועדפים) */
+function favBtn(uri){ return `<button class="fav${favSet.has(uri) ? ' on' : ''}" data-uri="${esc(uri)}" title="מועדף" aria-label="מועדף">♥</button>`; }
 function rowsHTML(tracks, start){
-  return tracks.map((t, i) => `<div class="row" data-i="${start+i}"><div class="n">${start+i+1}</div>
+  return tracks.map((t, i) => { known.set(t.uri, t); return `<div class="row" data-i="${start+i}"><div class="n">${start+i+1}</div>
     <div class="t"><b>${esc(t.name)}</b><span>${esc(t.who || artists(t.artists))}${t.album && t.album.name ? ' · ' + esc(t.album.name) : ''}</span></div>
-    <div class="d">${fmt(t.duration_ms)}</div></div>`).join('');
+    ${favBtn(t.uri)}<div class="d">${fmt(t.duration_ms)}</div></div>`; }).join('');
 }
 
 /* חיפוש */
@@ -487,28 +501,73 @@ $('plList').addEventListener('click', e => {
   play({ context_uri: pls[+r.dataset.i].uri });
 });
 
-/* שירים שאהבתי */
-let lkNext = '/me/tracks?limit=50', liked = [];
-async function loadLiked(){
-  if (!lkNext) return;
-  try{
-    const j = await api(lkNext);
-    liked = liked.concat((j.items || []).map(x => x.track || x.item).filter(Boolean)); lkNext = j.next;
-    $('likedList').innerHTML = liked.length ? rowsHTML(liked, 0) : '<div class="empty">אין עדיין שירים שאהבת</div>';
-    $('likedMore').classList.toggle('hidden', !lkNext);
-  }catch(e){ $('likedList').innerHTML = '<div class="empty">לא ניתן לטעון</div>'; toast(e.message); }
+/* ---------- מועדפים (נשמרים בחשבון הספוטיפיי של מי שמחובר, כ"שירים שאהבתי") ---------- */
+let favSet = new Set(); try{ favSet = new Set(JSON.parse(store.get('favs') || '[]')); }catch(e){}
+let lkNext = '/me/tracks?limit=50', liked = [], likedShown = [];
+/* בגרסה הציבורית מציגים במועדפים רק תוכן מאושר */
+const okTrack = t => FULL || !t.id || (t.artists || []).some(a => APPROVED_ARTIST_IDS.has(a.id)) || APPROVED_TRACK_IDS.has(t.id);
+function paintFavs(){ document.querySelectorAll('.fav').forEach(b => b.classList.toggle('on', favSet.has(b.dataset.uri))); }
+function renderLiked(){
+  likedShown = liked.filter(t => favSet.has(t.uri) && okTrack(t));
+  $('likedList').innerHTML = likedShown.length ? rowsHTML(likedShown, 0)
+    : '<div class="empty">' + (lkNext ? 'טוען…' : 'עדיין אין מועדפים. לוחצים על ♥ ליד שיר כדי להוסיף אותו לכאן') + '</div>';
+  $('likedMore').classList.toggle('hidden', !lkNext || !liked.length || lkNext === '/me/tracks?limit=50');
 }
-$('likedMore').onclick = loadLiked;
+async function loadLiked(bg){
+  if (!lkNext) return renderLiked();
+  try{
+    const j = await apiRetry(lkNext, undefined, bg);
+    const items = (j.items || []).map(x => x.track || x.item).filter(t => t && t.uri);
+    items.forEach(t => { favSet.add(t.uri); if (!liked.some(x => x.uri === t.uri)) liked.push(t); });
+    lkNext = j.next;
+    store.set('favs', JSON.stringify([...favSet]));
+    renderLiked(); paintFavs();
+  }catch(e){ lkNext = null; renderLiked(); if (!liked.length) $('likedList').innerHTML = '<div class="empty">לא ניתן לטעון את המועדפים<br><small dir="ltr">' + esc(e.message) + '</small></div>'; }
+}
+/* טעינה שקטה של כל המועדפים ברקע (כדי שהלבבות יוצגו נכון בכל הרשימות) */
+async function loadFavsBg(){
+  try{ for (let n = 0; lkNext && n < 20; n++) await loadLiked(true); }catch(e){}
+}
+let favBusy = new Set();
+async function toggleFav(uri){
+  if (!uri || favBusy.has(uri)) return;
+  if (!canFav()){ $('favNote').classList.remove('hidden'); $('favNote').scrollIntoView({ behavior:'smooth', block:'center' }); toast('כדי לסמן מועדפים צריך לאשר מחדש את החיבור, למעלה'); return; }
+  const on = !favSet.has(uri);
+  favBusy.add(uri);
+  if (on) favSet.add(uri); else favSet.delete(uri);
+  const t = known.get(uri);
+  if (on && t && !liked.some(x => x.uri === uri)) liked.unshift(t);
+  if (!on) liked = liked.filter(x => x.uri !== uri);
+  paintFavs(); if (!$('tab-liked').classList.contains('hidden')) renderLiked();
+  try{
+    await api('/me/library', { method: on ? 'PUT' : 'DELETE', query:{ uris: uri } });
+    store.set('favs', JSON.stringify([...favSet]));
+    toast(on ? 'נוסף למועדפים: ' + (t ? t.name : '') : 'הוסר מהמועדפים');
+  }catch(e){
+    if (on) favSet.delete(uri); else { favSet.add(uri); if (t) liked.unshift(t); }
+    if (on) liked = liked.filter(x => x.uri !== uri);
+    paintFavs(); if (!$('tab-liked').classList.contains('hidden')) renderLiked();
+    if (e.status === 403){ $('favNote').classList.remove('hidden'); toast('ספוטיפיי לא אישר את הפעולה. צריך לאשר מחדש את החיבור, למעלה'); }
+    else toast('לא הצלחתי לשמור: ' + e.message);
+  }finally{ favBusy.delete(uri); }
+}
+/* הלב נלחץ לפני שהשורה מתחילה לנגן */
+document.addEventListener('click', e => {
+  const b = e.target.closest('.fav'); if (!b) return;
+  e.stopPropagation(); e.preventDefault(); toggleFav(b.dataset.uri);
+}, true);
+$('favReauth').onclick = login;
+$('likedMore').onclick = () => loadLiked();
 $('likedList').addEventListener('click', e => {
-  const r = e.target.closest('.row'); if (!r) return;
-  const i = +r.dataset.i, from = Math.max(0, i - 0);
-  play({ uris: liked.slice(from, from + 100).map(t => t.uri) });
+  const r = e.target.closest('.row'); if (!r || r.dataset.i == null) return;
+  const i = +r.dataset.i;
+  play({ uris: likedShown.slice(i, i + 100).map(t => t.uri) });
 });
 
 /* ---------- תוכן מאושר ---------- */
 const norm = s => String(s || '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(/["'״׳]/g, '').replace(/\s+/g, ' ').trim();
 const TTL = { art: 24*3600e3, show: 3*3600e3, list: 24*3600e3 };
-const CV = 'v5_';
+const CV = 'v6_';
 function cget(k, ttl){ try{ const v = JSON.parse(store.get(k) || 'null'); return v && Date.now() - v.t < ttl ? v.d : null; }catch(e){ return null; } }
 function cset(k, d){ store.set(k, JSON.stringify({ t: Date.now(), d })); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -580,7 +639,11 @@ async function searchAll(q, type, max, bg){
 async function artistTracks(a, bg){
   const ids = a.ids || [a.id], k = CV + 'art_' + ids.join('_');
   const c = cget(k, TTL.art); if (c) return c;
-  let tracks = [], useSearch = false;
+  let tracks = [], useSearch = false, searchErr = null;
+  /* זמר שהקטלוג המובנה שלו מלא (catalog.json → _full): אין צורך לשאול את ספוטיפיי בכלל */
+  await embeddedCatalog();
+  const full = (embedded && Array.isArray(embedded._full) && ids.some(id => embedded._full.includes(id)));
+  if (full){ tracks = dedupe(embeddedTracks(ids, a.name), t => t.name); if (tracks.length) cset(k, tracks); return tracks; }
   if (!catalogBlocked){
     try{
       let albums = [];
@@ -601,13 +664,13 @@ async function artistTracks(a, bg){
         try{
           const found = await searchAll(q, 'track', 400, bg);
           found.filter(t => t && t.uri && (t.artists || []).some(x => ids.includes(x.id))).forEach(t => tracks.push(slim(t)));
-        }catch(e){ if (!tracks.length && q.startsWith('artist:')) throw e; }
+        }catch(e){ if (!tracks.length && q.startsWith('artist:')) searchErr = e; }
       }
     }
   }
-  await embeddedCatalog();
   tracks = embeddedTracks(ids, a.name).concat(tracks);
   tracks = dedupe(tracks, t => t.name);
+  if (!tracks.length && searchErr) throw searchErr;
   if (tracks.length) cset(k, tracks);
   return tracks;
 }
@@ -624,18 +687,25 @@ async function playlistTracks(p){
 }
 async function singleTracks(bg){
   if (!ALLOWED.tracks.length) return [];
-  const ids = ALLOWED.tracks.map(t => t.id), k = CV + 'tr_' + ids.join('_'), c = cget(k, TTL.art); if (c) return c;
-  let tracks = [], useSearch = false;
+  const allIds = ALLOWED.tracks.map(t => t.id), k = CV + 'tr_' + allIds.join('_'), c = cget(k, TTL.art); if (c) return c;
+  /* קודם מהקטלוג המובנה (catalog.json → _tracks), ורק מה שחסר שם נשלף מספוטיפיי */
+  await embeddedCatalog();
+  const emb = (embedded && embedded._tracks) || {};
+  let tracks = ALLOWED.tracks.filter(t => emb[t.id]).map(t => { const e = emb[t.id];
+    return { uri:e.uri, name:e.name, artists:[{ name:e.who || '' }], album:{ name:e.album || '' }, duration_ms:e.duration_ms || 0 }; });
+  const missing = ALLOWED.tracks.filter(t => !emb[t.id]), ids = missing.map(t => t.id);
+  if (!ids.length){ cset(k, tracks); return tracks; }
+  let useSearch = false;
   if (!catalogBlocked){
     try{
       for (let i = 0; i < ids.length; i += 50){
         const j = await apiRetry('/tracks', { query:{ ids: ids.slice(i, i + 50).join(',') } }, bg);
         tracks = tracks.concat((j.tracks || []).filter(t => t && t.uri).map(t => slim(t)));
       }
-    }catch(e){ blockedBy(e); tracks = []; useSearch = true; }
+    }catch(e){ blockedBy(e); useSearch = true; }
   }
   if (catalogBlocked || useSearch){
-    for (const t of ALLOWED.tracks){
+    for (const t of missing){
       try{
         const found = await searchAll(t.q, 'track', 50, bg);
         const hit = found.find(x => x.id === t.id) || found[0];
@@ -946,7 +1016,7 @@ $('showBack').onclick = () => { curShow = null; $('epq').value = ''; $('epq').cl
 $('showMore').onclick = () => curShow ? loadEps(true) : loadShows();
 
 /* לשוניות */
-const TABS = FULL ? ['kids','shows','search','playlists','liked'] : ['kids','shows'];
+const TABS = FULL ? ['kids','shows','search','playlists','liked'] : ['kids','shows','liked'];
 let likedLoaded = false, showsLoaded = false, kidsLoaded = false, plLoaded = false;
 function selectTab(name){
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
@@ -954,7 +1024,7 @@ function selectTab(name){
   if (name === 'kids' && !kidsLoaded){ kidsLoaded = true; loadKids(); }
   if (name === 'shows' && !showsLoaded){ showsLoaded = true; loadShows(); }
   if (name === 'playlists' && !plLoaded){ plLoaded = true; loadPlaylists(); }
-  if (name === 'liked' && !likedLoaded){ likedLoaded = true; loadLiked(); }
+  if (name === 'liked'){ renderLiked(); if (!likedLoaded){ likedLoaded = true; loadLiked(); } }
 }
 document.querySelectorAll('.tab').forEach(b => {
   if (!TABS.includes(b.dataset.tab)) b.classList.add('hidden');
@@ -1001,6 +1071,8 @@ $('logout').onclick = logout;
   $('appView').classList.remove('hidden'); $('bar').classList.remove('hidden');
   if (FULL) $('logout').classList.remove('hidden');
   loadSDK(); refreshDevices(); poll(); selectTab('kids'); checkVersion(); whoAmI();
+  if (!canFav()) $('favNote').classList.remove('hidden');
+  setTimeout(() => { likedLoaded = true; loadFavsBg(); }, 6000);
   setInterval(poll, 8000); setInterval(tick, 500); setInterval(refreshDevices, 30000);
 })();
 </script>
