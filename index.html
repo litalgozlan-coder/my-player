@@ -39,8 +39,9 @@ header h1{font-size:22px;margin:0;flex:1}
 .btn:hover{background:var(--hover)}
 .btn.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
 select{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;max-width:100%}
-.tabs{display:flex;gap:6px;margin:8px 0 14px;border-bottom:1px solid var(--line)}
-.tab{background:none;border:none;padding:10px 12px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent}
+.tabs{display:flex;gap:6px;margin:8px 0 14px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;white-space:nowrap;background:none;border:none;padding:10px 12px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent}
 .tab.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
 .search{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);margin-bottom:12px}
 .list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -106,6 +107,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
     <div id="sdkNote" class="note hidden"></div>
     <div class="tabs">
       <button class="tab" data-tab="kids">שירים</button>
+      <button class="tab" data-tab="drive">מהדרייב</button>
       <button class="tab" data-tab="shows">פודקאסטים</button>
       <button class="tab" data-tab="search">חיפוש</button>
       <button class="tab" data-tab="playlists">הרשימות שלי</button>
@@ -119,6 +121,12 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
       <div id="kStatus" class="foot" style="margin:-6px 0 10px"></div>
       <button class="btn hidden" id="kidsBack" style="margin-bottom:10px">→ חזרה לרשימה</button>
       <div class="list" id="kidsList"><div class="empty">טוען…</div></div>
+    </section>
+
+    <section id="tab-drive" class="hidden">
+      <input class="search" id="dq" type="search" placeholder="חיפוש בשירים מהדרייב…" autocomplete="off">
+      <button class="btn hidden" id="driveBack" style="margin-bottom:10px">→ חזרה לתיקיות</button>
+      <div class="list" id="driveList"><div class="empty">טוען…</div></div>
     </section>
 
     <section id="tab-search">
@@ -164,7 +172,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261016105901';
+const VERSION = '20261016110302';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -225,6 +233,8 @@ const ALLOWED = {
           '2RPbulEmCnZQWgOa1lcSQT']
 };
 const FULL = location.hostname === '127.0.0.1';
+/* כתובת השרת שמשמיע את השירים מגוגל דרייב (Cloudflare Worker, הקוד בתיקייה drive-worker). ריק = הלשונית מוסתרת */
+const DRIVE_API = '';
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -390,6 +400,7 @@ $('refreshDev').onclick = refreshDevices;
 
 /* ---------- ניגון ---------- */
 async function play(body, quiet){
+  stopLocal();
   if (player && player.activateElement) { try{ player.activateElement(); }catch(e){} }
   let ok = true;
   try{
@@ -440,6 +451,7 @@ function mediaSession(it, playing){
   }catch(e){}
 }
 function render(){
+  if (localMode) return renderLocal();
   const it = st && st.item;
   const local = !!(st && st.is_playing && st.device && st.device.id === localDeviceId);
   keepAwake(local); mediaSession(it, !!(st && st.is_playing));
@@ -454,6 +466,7 @@ function render(){
   tick();
 }
 function tick(){
+  if (localMode) return tickLocal();
   const it = st && st.item; if (seeking) return;
   const dur = it ? it.duration_ms : 0;
   let pos = st ? (st.progress_ms || 0) : 0;
@@ -463,19 +476,25 @@ function tick(){
   $('seek').value = dur ? Math.round(pos / dur * 1000) : 0;
 }
 $('pp').onclick = () => {
+  if (localMode){ audio.paused ? audio.play().catch(e => toast('לא ניתן לנגן: ' + e.message)) : audio.pause(); return; }
   if (player && player.activateElement) { try{ player.activateElement(); }catch(e){} }
   st && st.is_playing ? ctl('/me/player/pause','PUT') : ctl('/me/player/play','PUT');
 };
-$('next').onclick = () => ctl('/me/player/next','POST');
-$('prev').onclick = () => ctl('/me/player/previous','POST');
-$('shuf').onclick = () => ctl('/me/player/shuffle','PUT',{ state: String(!(st && st.shuffle_state)) });
-$('seek').addEventListener('input', () => { seeking = true; const it = st && st.item; if (it) $('tCur').textContent = fmt($('seek').value/1000*it.duration_ms); });
+$('next').onclick = () => localMode ? localStep(1) : ctl('/me/player/next','POST');
+$('prev').onclick = () => localMode ? localStep(-1) : ctl('/me/player/previous','POST');
+$('shuf').onclick = () => { if (localMode){ localShuffle = !localShuffle; renderLocal(); return; } ctl('/me/player/shuffle','PUT',{ state: String(!(st && st.shuffle_state)) }); };
+$('seek').addEventListener('input', () => {
+  seeking = true;
+  if (localMode){ if (audio.duration) $('tCur').textContent = fmt($('seek').value/1000*audio.duration*1000); return; }
+  const it = st && st.item; if (it) $('tCur').textContent = fmt($('seek').value/1000*it.duration_ms);
+});
 $('seek').addEventListener('change', () => {
+  if (localMode){ seeking = false; if (audio.duration) audio.currentTime = $('seek').value/1000*audio.duration; return; }
   seeking = false; const it = st && st.item; if (!it) return;
   ctl('/me/player/seek','PUT',{ position_ms: String(Math.round($('seek').value/1000*it.duration_ms)) });
 });
 let volT;
-$('vol').addEventListener('input', () => { clearTimeout(volT); volT = setTimeout(() => ctl('/me/player/volume','PUT',{ volume_percent: $('vol').value }), 300); });
+$('vol').addEventListener('input', () => { audio.volume = $('vol').value / 100; if (localMode) return; clearTimeout(volT); volT = setTimeout(() => ctl('/me/player/volume','PUT',{ volume_percent: $('vol').value }), 300); });
 
 /* ---------- רשימות שירים ---------- */
 const known = new Map(); /* שירים שהוצגו על המסך, לפי uri (לרשימת המועדפים) */
@@ -1045,15 +1064,124 @@ $('showList').addEventListener('click', e => {
 $('showBack').onclick = () => { curShow = null; $('epq').value = ''; $('epq').classList.add('hidden'); renderShows(); };
 $('showMore').onclick = () => curShow ? loadEps(true) : loadShows();
 
+/* ---------- שירים מגוגל דרייב: ניגון ישיר בדפדפן ---------- */
+const audio = new Audio(); audio.preload = 'auto'; audio.volume = 0.7;
+let localMode = false, localQueue = [], localIdx = 0, localShuffle = false, driveLib = null, driveFolder = null, driveView = [];
+function stopLocal(){ if (!localMode) return; localMode = false; try{ audio.pause(); }catch(e){} audio.removeAttribute('src'); }
+async function driveFetch(){
+  const t = await getToken();
+  let r;
+  try{ r = await fetch(DRIVE_API + '/library', { headers:{ Authorization:'Bearer ' + t }, cache:'no-store' }); }
+  catch(e){ throw new Error('השרת של הדרייב לא זמין (' + (e.message || e) + '). אם יש סינון אתרים בנייד, צריך לאשר גם את workers.dev'); }
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 403 && /not allowed/.test(j.error || '')) throw new Error('החשבון המחובר לא מורשה לשירים מהדרייב (' + j.error.replace('not allowed: ', '') + ')');
+  if (!r.ok) throw new Error('שגיאה בטעינת השירים מהדרייב: ' + (j.error || r.status));
+  driveLib = j; return j;
+}
+async function ticket(){ if (!driveLib || Date.now() > driveLib.exp - 10 * 60 * 1000) await driveFetch(); return driveLib.ticket; }
+async function playLocal(list, i){
+  localQueue = list.slice(); localIdx = i;
+  if (st && st.is_playing){ try{ await api('/me/player/pause', { method:'PUT', query: currentDeviceId ? { device_id: currentDeviceId } : undefined }); }catch(e){} }
+  localMode = true;
+  await loadLocal();
+}
+async function loadLocal(){
+  const t = localQueue[localIdx]; if (!t) return;
+  try{
+    audio.src = DRIVE_API + '/f/' + encodeURIComponent(t.id) + '?' + await ticket();
+    audio.volume = $('vol').value / 100;
+    await audio.play();
+  }catch(e){ if (e && e.name !== 'AbortError') toast('לא ניתן לנגן את השיר: ' + (e.message || e)); }
+  renderLocal();
+}
+function localStep(d){
+  if (!localQueue.length) return;
+  if (d < 0 && audio.currentTime > 4){ audio.currentTime = 0; return; }
+  if (localShuffle && localQueue.length > 1){ let n; do { n = Math.floor(Math.random() * localQueue.length); } while (n === localIdx); localIdx = n; }
+  else localIdx = (localIdx + d + localQueue.length) % localQueue.length;
+  loadLocal();
+}
+audio.addEventListener('ended', () => { if (localMode && (localShuffle || localIdx < localQueue.length - 1)) localStep(1); else renderLocal(); });
+['play','pause','loadedmetadata'].forEach(ev => audio.addEventListener(ev, () => { if (localMode) renderLocal(); }));
+audio.addEventListener('error', () => { if (localMode && audio.getAttribute('src')) toast('תקלה בניגון הקובץ מהדרייב. אם זה חוזר, נסי שיר אחר או רענני את הדף.'); });
+function renderLocal(){
+  const t = localQueue[localIdx];
+  $('nowTitle').textContent = t ? t.name : 'לא מתנגן כרגע';
+  $('nowSub').textContent = t ? (t.folder || 'מהדרייב') + '  ·  המכשיר הזה' : ' ';
+  $('pp').textContent = audio.paused ? '▶' : '⏸';
+  $('shuf').classList.toggle('on', localShuffle);
+  if ('mediaSession' in navigator){
+    try{
+      if (t) navigator.mediaSession.metadata = new MediaMetadata({ title: t.name, artist: t.folder || '', album: '' });
+      navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing';
+      navigator.mediaSession.setActionHandler('play', () => audio.play());
+      navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+      navigator.mediaSession.setActionHandler('nexttrack', () => localStep(1));
+      navigator.mediaSession.setActionHandler('previoustrack', () => localStep(-1));
+    }catch(e){}
+  }
+  tickLocal();
+}
+function tickLocal(){
+  if (seeking) return;
+  const dur = isFinite(audio.duration) ? audio.duration * 1000 : 0, pos = (audio.currentTime || 0) * 1000;
+  $('tCur').textContent = fmt(pos); $('tDur').textContent = fmt(dur);
+  $('seek').value = dur ? Math.round(pos / dur * 1000) : 0;
+}
+
+/* לשונית "מהדרייב" */
+function driveRowsHTML(tracks){
+  return tracks.map((t, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
+    <div class="t"><b>${esc(t.name)}</b><span>${esc(t.folder || '')}</span></div></div>`).join('');
+}
+function renderDrive(){
+  const q = norm($('dq').value);
+  $('driveBack').classList.toggle('hidden', !driveFolder || !!q);
+  if (!driveLib){ return; }
+  const folders = driveLib.folders || [];
+  if (q){
+    const words = q.split(' ');
+    driveView = folders.flatMap(f => f.tracks.map(t => Object.assign({ folder: f.name }, t)))
+      .filter(t => { const n = norm(t.name + ' ' + t.folder); return words.every(w => n.includes(w)); }).slice(0, 200);
+    $('driveList').innerHTML = driveView.length ? driveRowsHTML(driveView) : '<div class="empty">לא נמצא כלום בחיפוש הזה</div>';
+    return;
+  }
+  if (driveFolder){
+    driveView = driveFolder.tracks.map(t => Object.assign({ folder: driveFolder.name }, t));
+    $('driveList').innerHTML = `<div class="row" style="cursor:default"><div class="t"><b>${esc(driveFolder.name)}</b><span>${driveView.length} קבצים · לחיצה על שיר מנגנת אותו ואת הבאים אחריו</span></div></div>` +
+      (driveView.length ? driveRowsHTML(driveView) : '<div class="empty">אין קבצי שמע בתיקייה</div>');
+    return;
+  }
+  driveView = [];
+  $('driveList').innerHTML = folders.length ? folders.map((f, i) => `<div class="row" data-f="${i}"><div class="n">📁</div>
+    <div class="t"><b>${esc(f.name)}</b><span>${f.error ? 'לא נגישה' : f.tracks.length + ' קבצים'}</span></div><div class="d">‹</div></div>`).join('')
+    : '<div class="empty">עדיין לא אושרו תיקיות מהדרייב</div>';
+}
+async function loadDrive(){
+  $('driveList').innerHTML = '<div class="empty">טוען…</div>';
+  try{ await driveFetch(); renderDrive(); }
+  catch(e){ driveLoaded = false; $('driveList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
+}
+let dqT;
+$('dq').addEventListener('input', () => { clearTimeout(dqT); dqT = setTimeout(renderDrive, 250); });
+$('driveList').addEventListener('click', e => {
+  const r = e.target.closest('.row'); if (!r) return;
+  if (r.dataset.f != null){ driveFolder = driveLib.folders[+r.dataset.f]; renderDrive(); window.scrollTo(0, 0); return; }
+  if (r.dataset.i == null) return;
+  playLocal(driveView, +r.dataset.i);
+});
+$('driveBack').onclick = () => { driveFolder = null; $('dq').value = ''; renderDrive(); };
+
 /* לשוניות */
-const TABS = FULL ? ['kids','shows','search','playlists','liked'] : ['kids','shows','liked'];
-let likedLoaded = false, showsLoaded = false, kidsLoaded = false, plLoaded = false;
+const TABS = (FULL ? ['kids','shows','search','playlists','liked'] : ['kids','shows','liked']).concat(DRIVE_API ? ['drive'] : []);
+let driveLoaded = false, likedLoaded = false, showsLoaded = false, kidsLoaded = false, plLoaded = false;
 function selectTab(name){
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
-  ['kids','shows','search','playlists','liked'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
+  ['kids','drive','shows','search','playlists','liked'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
   if (name === 'kids' && !kidsLoaded){ kidsLoaded = true; loadKids(); }
   if (name === 'shows' && !showsLoaded){ showsLoaded = true; loadShows(); }
   if (name === 'playlists' && !plLoaded){ plLoaded = true; loadPlaylists(); }
+  if (name === 'drive' && !driveLoaded){ driveLoaded = true; loadDrive(); }
   if (name === 'liked'){ renderLiked(); if (!likedLoaded){ likedLoaded = true; loadLiked(); } }
 }
 document.querySelectorAll('.tab').forEach(b => {
