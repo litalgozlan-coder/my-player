@@ -164,7 +164,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261016105735';
+const VERSION = '20261016105812';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -199,11 +199,15 @@ const ALLOWED = {
     { id:'1WWc6zXfTwpakU8Ds5yS1G', name:'מוטי וייס', q:['Moti Weiss'] },
     { id:'70287pcNpILjcpoBl0soPs', name:'איציק דדיה', q:['Itzik Dadya'] },
     { ids:['5GCh3ZazIVWg8eKb5Akv0q','7wCViOhA0Yp7lOwZUqEYJJ'], name:'אברהם פריד', q:['Avraham Fried','אברהם פריד'] },
-    { ids:['0oQbM7blRDsxbNlEpVAhDV','5H64fYkQmqjX0bS4bplq8F'], name:'חיים ישראל', q:['חיים ישראל','Haim Israel'] },
+    { id:'20G5aH4jbljiz5B6eXOobW', name:'נהוראי אריאלי', q:['נהוראי אריאלי'] },
+    { ids:['2BFlnV6PiwBY8BHMh2sYx5','7DLVxGuAAxIy1JNUL9VrJa'], name:'איציק אשל', q:['Itzik Eshel','איציק אשל'] },
+    { ids:['4R0JVewCEeL3D4KZ71sZsH','2TjHV8WiJT1G7lWPGdjZ1a'], name:'יניב בן משיח', q:['Yaniv Ben Mashiach','יניב בן משיח'] },
+    { ids:['5H64fYkQmqjX0bS4bplq8F','0oQbM7blRDsxbNlEpVAhDV'], name:'חיים ישראל', q:['Haim Israel','חיים ישראל'] },
     { id:'2HTxp63G47uFSTqQ5urmbU', name:'שמואל', q:['שמואל'] },
-    { ids:['2TjHV8WiJT1G7lWPGdjZ1a','4R0JVewCEeL3D4KZ71sZsH'], name:'יניב בן משיח', q:['יניב בן משיח','Yaniv Ben Mashiach'] },
-    { ids:['7DLVxGuAAxIy1JNUL9VrJa','2BFlnV6PiwBY8BHMh2sYx5'], name:'איציק אשל', q:['איציק אשל','Itzik Eshel'] },
-    { id:'20G5aH4jbljiz5B6eXOobW', name:'נהוראי אריאלי', q:['נהוראי אריאלי'] }
+    { ids:['6lQ484EsHlqDESmgDq8PFR','7zBLy3o61q1xaRlzkrYh3B','38C1zBy8otog2bchgzWQtA'], name:'פיני אינהורן', q:['Pini Einhorn','פיני אינהורן'] },
+    { id:'308QpS53hDcYGZseJlXtma', name:'עקיבא', q:['Akiva','עקיבא תורגמן'] },
+    { id:'7s5sPhhGqTX43KhnMKjQot', name:'נפתלי קמפה', q:['נפתלי קמפה','Naftali Kempeh'] },
+    { id:'1pZcigV84ihZL3erh8v0gY', name:'מוטי שטיינמץ', q:['Motty Steinmetz','מוטי שטיינמץ'] }
   ],
   /* שירים בודדים מאושרים: מזהה השיר + טקסט לחיפוש (שם השיר והזמר) */
   tracks: [
@@ -634,7 +638,8 @@ let catalogBlocked = cget('catalogBlocked', 24*3600e3) === true;
 let embedded = null;
 async function embeddedCatalog(){
   if (embedded) return embedded;
-  try{ const r = await fetch(BASE + 'catalog.json?v=' + VERSION, { cache:'no-store' }); embedded = r.ok ? await r.json() : {}; }
+  /* הכתובת כוללת את מספר הגרסה, ולכן הדפדפן יכול לשמור את הקובץ עד לגרסה הבאה */
+  try{ const r = await fetch(BASE + 'catalog.json?v=' + VERSION); embedded = r.ok ? await r.json() : {}; }
   catch(e){ embedded = {}; }
   return embedded;
 }
@@ -804,7 +809,8 @@ async function findEpisodes(s, q){
 /* לשונית "שירים": אמנים, רשימות ושירים בודדים מאושרים, וחיפוש פנימי */
 let kEntries = [], curEntry = null, kTracks = [], kBuilding = null;
 function entryList(){
-  const list = ALLOWED.artists.map(a => ({ type:'artist', name:a.name, src:a }))
+  /* הזמרים מוצגים לפי א"ב, כדי שיהיה קל למצוא ברשימה ארוכה */
+  const list = ALLOWED.artists.map(a => ({ type:'artist', name:a.name, src:a })).sort((x, y) => x.name.localeCompare(y.name, 'he'))
     .concat(ALLOWED.playlists.map(id => ({ type:'playlist', name:'', src:{ id } })));
   if (ALLOWED.tracks.length) list.push({ type:'tracks', name:'שירים בודדים', src:null });
   return list;
