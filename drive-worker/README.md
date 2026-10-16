@@ -53,3 +53,11 @@
 ```
 
 בשלב 1 סעיף 6 צריך לשתף עם חשבון השירות את שש התיקיות האלה, ואת הקובץ "יסמין מועלם - יחפים" לבד (לא את התיקייה של נעמה).
+
+**ALLOWED_EMAILS**:
+
+```
+lital.gozlan@gmail.com,naama.samara@gmail.com,daniel.haim.samara@gmail.com,guligulsamara@gmail.com
+```
+
+(אם החשבון הספוטיפיי שלך רשום על מייל אחר, צריך להחליף את הראשון.)
