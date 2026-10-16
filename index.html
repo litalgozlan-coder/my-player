@@ -164,7 +164,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261016102702';
+const VERSION = '20261016103134';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -326,7 +326,19 @@ function loadSDK(){
     player.addListener('initialization_error', ({message}) => {
       sdkNote('הדפדפן הזה לא יכול לנגן בעצמו (' + (message || '') + '). באייפון זה לא נתמך; באנדרואיד כדאי לנסות בכרום.');
     });
-    player.addListener('authentication_error', ({message}) => { sdkNote('בעיית התחברות לספוטיפיי: ' + (message || '') + '. כדאי להתנתק ולהתחבר שוב.'); });
+    /* כשל אימות של רכיב הנגן: לרוב תקלה רגעית אצל ספוטיפיי. מרעננים טוקן ומנסים להתחבר שוב פעמיים לפני שמציקים */
+    let sdkAuthRetries = 0;
+    player.addListener('authentication_error', async ({message}) => {
+      if (sdkAuthRetries++ < 2){
+        sdkNote('ספוטיפיי לא אישר רגע את חיבור הנגן (' + (message || '') + '), מנסה שוב…');
+        try{ if (tok) tok.exp = 0; await getToken(); }catch(e){}
+        setTimeout(() => { try{ player.disconnect(); }catch(e){} player.connect(); }, 4000 * sdkAuthRetries);
+        return;
+      }
+      sdkNote('בעיית התחברות לספוטיפיי: ' + (message || '') + '. כדאי להתנתק ולהתחבר שוב. ');
+      const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'התנתקות וחיבור מחדש'; b.onclick = logout;
+      $('sdkNote').appendChild(b);
+    });
     player.addListener('account_error', ({message}) => { sdkNote('החשבון שמחובר כאן אינו Premium, ולכן הנגן בדפדפן לא יכול לנגן. ' + (message || '')); });
     player.addListener('playback_error', ({message}) => toast('שגיאת ניגון: ' + message));
     player.addListener('player_state_changed', () => pollSoon());
@@ -1048,7 +1060,14 @@ async function whoAmI(){
     el.textContent = 'מחובר: ' + who + (me.email ? ' (' + me.email + ')' : '') + ' · מנוי: ' + (prod === 'premium' ? 'Premium' : prod === 'free' || prod === 'open' ? 'חינמי' : prod || 'לא ידוע');
     $('appView').insertBefore(el, $('appView').firstChild);
     if (prod && prod !== 'premium') sdkNote('החשבון שמחובר כאן (' + who + ') אינו Premium, ולכן הנגן לא יכול לנגן. צריך לצרף אותו למנוי Family ואז להתנתק ולהתחבר שוב.');
-  }catch(e){}
+  }catch(e){
+    /* מציגים למה אי אפשר לזהות את החשבון, כדי שצילום מסך יספר את הסיפור */
+    const el = document.createElement('div'); el.className = 'foot'; el.style.margin = '-6px 0 8px';
+    const notReg = e.status === 403 && /regist/i.test(e.message || '');
+    el.textContent = notReg ? 'החשבון שמחובר כאן לא רשום באפליקציה ב־Spotify for Developers (User Management), ולכן ספוטיפיי חוסמת אותו.'
+      : 'לא הצלחתי לזהות את החשבון המחובר: ' + (e.message || e);
+    $('appView').insertBefore(el, $('appView').firstChild);
+  }
 }
 
 /* רישום service worker (נדרש להתקנה כאפליקציה) */
