@@ -172,7 +172,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261016124936';
+const VERSION = '20261016125222';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -502,7 +502,7 @@ function favBtn(uri){ return `<button class="fav${favSet.has(uri) ? ' on' : ''}"
 function rowsHTML(tracks, start){
   return tracks.map((t, i) => { known.set(t.uri, t); return `<div class="row" data-i="${start+i}"><div class="n">${start+i+1}</div>
     <div class="t"><b>${esc(t.name)}</b><span>${esc(t.who || artists(t.artists))}${t.album && t.album.name ? ' · ' + esc(t.album.name) : ''}</span></div>
-    ${favBtn(t.uri)}<div class="d">${fmt(t.duration_ms)}</div></div>`; }).join('');
+    ${t.drive ? '' : favBtn(t.uri)}<div class="d">${t.drive ? '' : fmt(t.duration_ms)}</div></div>`; }).join('');
 }
 
 /* חיפוש */
@@ -831,14 +831,24 @@ function entryList(){
   /* הזמרים מוצגים לפי א"ב, כדי שיהיה קל למצוא ברשימה ארוכה */
   const list = ALLOWED.artists.map(a => ({ type:'artist', name:a.name, src:a })).sort((x, y) => x.name.localeCompare(y.name, 'he'))
     .concat(ALLOWED.playlists.map(id => ({ type:'playlist', name:'', src:{ id } })));
-  if (ALLOWED.tracks.length) list.push({ type:'tracks', name:'שירים בודדים', src:null });
+  if (ALLOWED.tracks.length || DRIVE_API) list.push({ type:'tracks', name:'שירים בודדים', src:null });
   return list;
 }
 function entryTracks(en, bg){
   if (en.type === 'artist') return artistTracks(en.src, bg);
   if (en.type === 'playlist') return playlistTracks(en.src);
-  return singleTracks(bg);
+  return Promise.all([singleTracks(bg), driveSinglesLoad()]).then(([t, d]) => { driveSinglesNow = d; return t.concat(d); });
 }
+/* שירים בודדים מהדרייב (בסקריפט: FILES) מוצגים בלשונית "שירים" בתוך "שירים בודדים", ולא בלשונית "מהדרייב" */
+let driveSinglesP = null;
+function driveSinglesLoad(){
+  if (!DRIVE_API) return Promise.resolve([]);
+  if (!driveSinglesP) driveSinglesP = (driveLib ? Promise.resolve(driveLib) : driveFetch()).catch(e => { driveSinglesP = null; return { folders:[] }; });
+  return driveSinglesP.then(lib => ((lib.folders || []).find(f => f.id === 'singles') || { tracks:[] }).tracks
+    .map(t => ({ drive:true, id:t.id, type:t.type, uri:'drive:' + t.id, name:t.name, who:'מהדרייב', folder:'שירים בודדים', artists:[], album:{ name:'' }, duration_ms:0 })));
+}
+let driveSinglesNow = [];
+
 function renderEntries(){
   curEntry = null; $('kidsBack').classList.add('hidden');
   $('kidsList').innerHTML = kEntries.length ? kEntries.map((en, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
@@ -898,6 +908,7 @@ function cachedTracks(){
     }
     else if (en.type === 'playlist' && en.src && en.src.id) c = cget(CV + 'pl_' + en.src.id, TTL.art);
     else if (en.type === 'tracks') c = cget(CV + 'tr_' + ALLOWED.tracks.map(t => t.id).join('_'), TTL.art);
+    if (en.type === 'tracks') c = (c || []).concat(driveSinglesNow);
     (c || []).forEach(t => out.push(en.type === 'artist' ? Object.assign({}, t, { who: en.name }) : t));
   }
   return out;
@@ -985,9 +996,10 @@ $('kidsList').addEventListener('click', e => {
   if (r.dataset.art != null){ $('kq').value = ''; openEntry(kEntries[+r.dataset.art]); return; }
   if (r.dataset.i == null) return;
   const i = +r.dataset.i;
-  if (norm($('kq').value)){ play({ uris: kRes.tracks.slice(i, i + 50).map(x => x.uri) }); return; }
-  if (!curEntry){ openEntry(kEntries[i]); return; }
-  play({ uris: kTracks.slice(i, i + 100).map(x => x.uri) });
+  const list = norm($('kq').value) ? kRes.tracks : curEntry ? kTracks : null;
+  if (!list){ openEntry(kEntries[i]); return; }
+  if (list[i] && list[i].drive){ const d = list.filter(x => x.drive); playLocal(d, d.indexOf(list[i])); return; }
+  play({ uris: list.slice(i).filter(x => !x.drive).slice(0, norm($('kq').value) ? 50 : 100).map(x => x.uri) });
 });
 $('kidsBack').onclick = () => { $('kq').value = ''; renderEntries(); };
 
@@ -1157,7 +1169,7 @@ function renderDrive(){
   const q = norm($('dq').value);
   $('driveBack').classList.toggle('hidden', !driveFolder || !!q);
   if (!driveLib){ return; }
-  const folders = driveLib.folders || [];
+  const folders = (driveLib.folders || []).filter(f => f.id !== 'singles');
   if (q){
     const words = q.split(' ');
     driveView = folders.flatMap(f => f.tracks.map(t => Object.assign({ folder: f.name }, t)))
