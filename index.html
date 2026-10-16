@@ -172,7 +172,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261016110302';
+const VERSION = '20261016110818';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -233,7 +233,7 @@ const ALLOWED = {
           '2RPbulEmCnZQWgOa1lcSQT']
 };
 const FULL = location.hostname === '127.0.0.1';
-/* כתובת השרת שמשמיע את השירים מגוגל דרייב (Cloudflare Worker, הקוד בתיקייה drive-worker). ריק = הלשונית מוסתרת */
+/* כתובת הסקריפט שמשמיע את השירים מגוגל דרייב (Google Apps Script, הקוד בתיקייה drive-script). ריק = הלשונית מוסתרת */
 const DRIVE_API = '';
 
 const $ = id => document.getElementById(id);
@@ -1068,31 +1068,50 @@ $('showMore').onclick = () => curShow ? loadEps(true) : loadShows();
 const audio = new Audio(); audio.preload = 'auto'; audio.volume = 0.7;
 let localMode = false, localQueue = [], localIdx = 0, localShuffle = false, driveLib = null, driveFolder = null, driveView = [];
 function stopLocal(){ if (!localMode) return; localMode = false; try{ audio.pause(); }catch(e){} audio.removeAttribute('src'); }
-async function driveFetch(){
+async function gas(params){
   const t = await getToken();
   let r;
-  try{ r = await fetch(DRIVE_API + '/library', { headers:{ Authorization:'Bearer ' + t }, cache:'no-store' }); }
-  catch(e){ throw new Error('השרת של הדרייב לא זמין (' + (e.message || e) + '). אם יש סינון אתרים בנייד, צריך לאשר גם את workers.dev'); }
-  const j = await r.json().catch(() => ({}));
-  if (r.status === 403 && /not allowed/.test(j.error || '')) throw new Error('החשבון המחובר לא מורשה לשירים מהדרייב (' + j.error.replace('not allowed: ', '') + ')');
-  if (!r.ok) throw new Error('שגיאה בטעינת השירים מהדרייב: ' + (j.error || r.status));
-  driveLib = j; return j;
+  try{ r = await fetch(DRIVE_API + '?' + new URLSearchParams(Object.assign({ t }, params)), { cache:'no-store' }); }
+  catch(e){ throw new Error('הדרייב לא זמין כרגע (' + (e.message || e) + '). אם יש סינון אתרים בנייד, צריך לאשר את script.google.com ואת googleusercontent.com'); }
+  const j = await r.json().catch(() => ({ error:'תשובה לא תקינה (' + r.status + ')' }));
+  if (j.error){
+    if (/^not allowed/.test(j.error)) throw new Error('החשבון המחובר לא מורשה לשירים מהדרייב (' + j.error.replace('not allowed: ', '') + ')');
+    throw new Error('שגיאה מהדרייב: ' + j.error);
+  }
+  return j;
 }
-async function ticket(){ if (!driveLib || Date.now() > driveLib.exp - 10 * 60 * 1000) await driveFetch(); return driveLib.ticket; }
+async function driveFetch(){ driveLib = await gas({ a:'library' }); return driveLib; }
+/* הקבצים נטענים במלואם לזיכרון (עד 3 אחרונים), והשיר הבא נטען מראש כדי שלא יהיה המתנה */
+const blobs = new Map();
+function getBlob(id){
+  if (blobs.has(id)) return blobs.get(id);
+  const p = gas({ a:'file', id }).then(j => fetch('data:' + j.type + ';base64,' + j.data)).then(r => r.blob()).then(b => URL.createObjectURL(b));
+  p.catch(() => blobs.delete(id));
+  blobs.set(id, p);
+  while (blobs.size > 3){ const [k, v] = blobs.entries().next().value; blobs.delete(k); v.then(u => URL.revokeObjectURL(u)).catch(() => {}); }
+  return p;
+}
 async function playLocal(list, i){
   localQueue = list.slice(); localIdx = i;
   if (st && st.is_playing){ try{ await api('/me/player/pause', { method:'PUT', query: currentDeviceId ? { device_id: currentDeviceId } : undefined }); }catch(e){} }
   localMode = true;
+  try{ audio.play().catch(() => {}); audio.pause(); }catch(e){} /* מאשר ניגון בטלפון כבר בלחיצה עצמה */
   await loadLocal();
 }
+let loadSeq = 0;
 async function loadLocal(){
   const t = localQueue[localIdx]; if (!t) return;
+  const seq = ++loadSeq;
+  try{ audio.pause(); }catch(e){}
+  renderLocal(); $('nowSub').textContent = 'טוען מהדרייב…';
   try{
-    audio.src = DRIVE_API + '/f/' + encodeURIComponent(t.id) + '?' + await ticket();
-    audio.volume = $('vol').value / 100;
+    const url = await getBlob(t.id);
+    if (seq !== loadSeq || !localMode) return;
+    audio.src = url; audio.volume = $('vol').value / 100;
     await audio.play();
-  }catch(e){ if (e && e.name !== 'AbortError') toast('לא ניתן לנגן את השיר: ' + (e.message || e)); }
-  renderLocal();
+    const n = localQueue[(localIdx + 1) % localQueue.length]; if (n && !localShuffle) getBlob(n.id).catch(() => {});
+  }catch(e){ if (seq === loadSeq && e && e.name !== 'AbortError') toast('לא ניתן לנגן את השיר: ' + (e.message || e)); }
+  if (seq === loadSeq) renderLocal();
 }
 function localStep(d){
   if (!localQueue.length) return;
