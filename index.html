@@ -172,7 +172,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261016125222';
+const VERSION = '20261021155724';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -614,7 +614,7 @@ $('likedList').addEventListener('click', e => {
 /* ---------- תוכן מאושר ---------- */
 const norm = s => String(s || '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(/["'״׳]/g, '').replace(/\s+/g, ' ').trim();
 const TTL = { art: 24*3600e3, show: 3*3600e3, list: 24*3600e3 };
-const CV = 'v6_';
+const CV = 'v7_';
 function cget(k, ttl){ try{ const v = JSON.parse(store.get(k) || 'null'); return v && Date.now() - v.t < ttl ? v.d : null; }catch(e){ return null; } }
 function cset(k, d){ store.set(k, JSON.stringify({ t: Date.now(), d })); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -667,7 +667,8 @@ function embeddedTracks(ids, who){
   ids.forEach(id => ((embedded && embedded[id]) || []).forEach(t => out.push({ uri:t.uri, name:t.name, artists:[{ name: who }], album:{ name: t.album || '' }, duration_ms:t.duration_ms || 0 })));
   return out;
 }
-function blockedBy(e){ if (e && (e.status === 403 || e.status === 0 || e.status >= 500)){ catalogBlocked = true; cset('catalogBlocked', true); } return true; }
+/* רק חסימה אמיתית (403) מעבירה למצב חיפוש; תקלת רשת או שרת היא זמנית ולא משנה את אופן העבודה */
+function blockedBy(e){ if (e && e.status === 403){ catalogBlocked = true; cset('catalogBlocked', true); } return true; }
 
 /* חיפוש בספוטיפיי עם דפדוף */
 async function searchAll(q, type, max, bg){
@@ -770,24 +771,30 @@ async function approvedShows(bg){
   const want = new Set(ALLOWED.shows);
   const okPub = s => ALLOWED.publishers.some(p => norm(s.publisher) === norm(p));
   const add = s => { if (s && s.id && (want.has(s.id) || okPub(s))) map.set(s.id, s); };
-  if (!catalogBlocked){
+  /* רשימת הפודקאסטים המאושרים יושבת בקטלוג המובנה (catalog.json → _shows). הנקודה המרוכזת /shows?ids
+     הוסרה מספוטיפיי לאפליקציות פרטיות, ולכן לא פונים אליה יותר */
+  await embeddedCatalog();
+  Object.entries((embedded && embedded._shows) || {}).forEach(([id, s]) => add({ id, name:s.name, publisher:s.publisher }));
+  const slimShow = s => ({ id:s.id, name:s.name, publisher:s.publisher, total_episodes:s.total_episodes });
+  const base = [...map.values()].map(slimShow);
+  /* הרשימה המובנית מוצגת מיד; פודקאסטים חדשים של אותם מפיקים מתגלים ברקע ומתווספים כשהם נמצאים */
+  (async () => {
     try{
-      for (let i = 0; i < ALLOWED.shows.length; i += 50){
-        const j = await apiRetry('/shows', { query:{ ids: ALLOWED.shows.slice(i, i + 50).join(',') } }, bg);
-        (j.shows || []).forEach(add);
-      }
-    }catch(e){ blockedBy(e); }
-  }
-  try{
-    let next = '/me/shows?limit=50';
-    while (next){ const j = await apiRetry(next, undefined, bg); (j.items || []).map(x => x && x.show).forEach(add); next = j.next; }
-  }catch(e){}
-  for (const pub of ALLOWED.publishers){
-    try{ (await searchAll(pub, 'show', 100, bg)).forEach(add); }catch(e){}
-  }
-  const list = [...map.values()].map(s => ({ id:s.id, name:s.name, publisher:s.publisher, total_episodes:s.total_episodes }));
-  if (list.length) cset(CV + 'shows_ok', list);
-  return list;
+      let next = '/me/shows?limit=50';
+      while (next){ const j = await apiRetry(next, undefined, true); (j.items || []).map(x => x && x.show).forEach(add); next = j.next; }
+    }catch(e){}
+    for (const pub of ALLOWED.publishers){
+      try{ (await searchAll(pub, 'show', 100, true)).forEach(add); }catch(e){}
+    }
+    const list = [...map.values()].map(slimShow);
+    if (list.length) cset(CV + 'shows_ok', list);
+    if (list.length > shows.length){
+      list.forEach(s => { if (!shows.some(x => x.id === s.id)) shows.push(s); });
+      shows.sort((a, b) => a.name.localeCompare(b.name, 'he'));
+      if (!curShow && !$('tab-shows').classList.contains('hidden')) renderShows();
+    }
+  })();
+  return base;
 }
 const stripNiqqud = x => String(x || '').replace(/[֑-ׇ]/g, '').trim();
 const byDateDesc = (a, b) => String(b.release_date || '').localeCompare(String(a.release_date || ''));
@@ -796,13 +803,22 @@ async function showEpisodes(s, bg, more){
   const k = CV + 'ep_' + s.id;
   let st = cget(k, TTL.show) || { eps:[], off:0, done:false, total:null, src:null };
   if (st.done || (st.eps.length && !more)) return st;
-  if (!st.src && !catalogBlocked){
+  /* רשימת הפרקים המלאה נשלפת ישירות מהפודקאסט. תקלה זמנית (רשת, 5xx, 429) מוצגת כשגיאה ולא
+     מעבירה לחיפוש החלקי; רק אם ספוטיפיי חוסמת את הנקודה הזאת (403/404) עוברים לחיפוש */
+  if (!st.src || st.src === 'catalog'){
     try{
-      let next = `/shows/${s.id}/episodes?limit=50`;
-      while (next && st.eps.length < 1000){ const j = await apiRetry(next, undefined, bg); st.eps = st.eps.concat((j.items || []).filter(e => e && e.uri).map(e => slimEp(e, s.name))); next = j.next; }
+      let next = st.next || `/shows/${s.id}/episodes?limit=50`;
+      while (next && st.eps.length < 1000){
+        const j = await apiRetry(next, undefined, bg);
+        st.eps = st.eps.concat((j.items || []).filter(e => e && e.uri).map(e => slimEp(e, s.name)));
+        next = j.next; st.next = next; st.src = 'catalog';
+      }
       st.done = true; st.total = st.eps.length; st.src = 'catalog';
       cset(k, st); return st;
-    }catch(e){ blockedBy(e); st.eps = []; }
+    }catch(e){
+      if (e.status === 403 || e.status === 404){ st.eps = []; st.next = null; }
+      else { cset(k, st); if (st.eps.length) return st; throw e; }  /* תקלה זמנית: מה שכבר נטען מוצג, ו"עוד פרקים" ממשיך מאותה נקודה */
+    }
   }
   st.src = 'search';
   const nm = norm(s.name), q = '"' + stripNiqqud(s.name) + '"';
