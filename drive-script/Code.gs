@@ -85,13 +85,32 @@ function library_(){
   return lib;
 }
 
+/* מועדפים מהדרייב: רשימת מזהי קבצים לכל חשבון, נשמרת בסקריפט (ולכן זהה בכל הטלפונים של אותו חשבון) */
+function favs_(email){
+  try{ return JSON.parse(PropertiesService.getScriptProperties().getProperty('fav_' + email) || '[]'); }catch(e){ return []; }
+}
+function setFav_(email, id, on){
+  const lock = LockService.getScriptLock(); lock.waitLock(5000);
+  try{
+    let list = favs_(email).filter(x => x !== id);
+    if (on) list.unshift(id);
+    PropertiesService.getScriptProperties().setProperty('fav_' + email, JSON.stringify(list.slice(0, 200)));
+    return list;
+  }finally{ lock.releaseLock(); }
+}
+
 function doGet(e){
   const p = (e && e.parameter) || {};
   try{
     const u = user_(p.t);
     if (u.error) return out_({ error: u.error });
     const lib = library_();
-    if (p.a === 'library') return out_(lib);
+    if (p.a === 'library') return out_(Object.assign({ favs: favs_(u.email) }, lib));
+    if (p.a === 'fav'){
+      const ok = lib.folders.some(f => f.tracks.some(t => t.id === p.id));
+      if (!ok) return out_({ error:'not approved' });
+      return out_({ favs: setFav_(u.email, p.id, p.on === '1') });
+    }
     if (p.a === 'file'){
       const ok = lib.folders.some(f => f.tracks.some(t => t.id === p.id));
       if (!ok) return out_({ error:'not approved' });

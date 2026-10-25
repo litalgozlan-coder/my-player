@@ -172,7 +172,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261021155724';
+const VERSION = '20261025185126';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -502,7 +502,7 @@ function favBtn(uri){ return `<button class="fav${favSet.has(uri) ? ' on' : ''}"
 function rowsHTML(tracks, start){
   return tracks.map((t, i) => { known.set(t.uri, t); return `<div class="row" data-i="${start+i}"><div class="n">${start+i+1}</div>
     <div class="t"><b>${esc(t.name)}</b><span>${esc(t.who || artists(t.artists))}${t.album && t.album.name ? ' · ' + esc(t.album.name) : ''}</span></div>
-    ${t.drive ? '' : favBtn(t.uri)}<div class="d">${t.drive ? '' : fmt(t.duration_ms)}</div></div>`; }).join('');
+    ${favBtn(t.uri)}<div class="d">${t.drive ? '' : fmt(t.duration_ms)}</div></div>`; }).join('');
 }
 
 /* חיפוש */
@@ -554,11 +554,33 @@ let lkNext = '/me/tracks?limit=50', liked = [], likedShown = [];
 /* בגרסה הציבורית מציגים במועדפים רק תוכן מאושר */
 const okTrack = t => FULL || !t.id || (t.artists || []).some(a => APPROVED_ARTIST_IDS.has(a.id)) || APPROVED_TRACK_IDS.has(t.id);
 function paintFavs(){ document.querySelectorAll('.fav').forEach(b => b.classList.toggle('on', favSet.has(b.dataset.uri))); }
+/* מועדפים מהדרייב: מזוהים לפי uri שמתחיל ב-drive:, נשמרים דרך סקריפט הדרייב (ובינתיים גם בטלפון) */
+const isDrive = uri => String(uri || '').startsWith('drive:');
+let likedDrive = [];
+function driveFavTracks(){
+  if (!DRIVE_API || !driveLib) return [];
+  const out = [];
+  (driveLib.folders || []).forEach(f => (f.tracks || []).forEach(t => { const uri = 'drive:' + t.id;
+    if (favSet.has(uri) && !out.some(x => x.uri === uri)) out.push({ drive:true, id:t.id, type:t.type, uri, name:t.name, who:'מהדרייב', folder:f.name, artists:[], album:{ name:f.id === 'singles' ? '' : f.name }, duration_ms:0 }); }));
+  return out;
+}
 function renderLiked(){
   likedShown = liked.filter(t => favSet.has(t.uri) && okTrack(t));
-  $('likedList').innerHTML = likedShown.length ? rowsHTML(likedShown, 0)
-    : '<div class="empty">' + (lkNext ? 'טוען…' : 'עדיין אין מועדפים. לוחצים על ♥ ליד שיר כדי להוסיף אותו לכאן') + '</div>';
+  likedDrive = driveFavTracks();
+  const driveMissing = DRIVE_API && !driveLib && [...favSet].some(isDrive);
+  $('likedList').innerHTML = (likedShown.length ? rowsHTML(likedShown, 0) : '') +
+    (likedDrive.length ? `<div class="row" style="cursor:default"><div class="t"><b>מהדרייב</b><span>${likedDrive.length} שירים · לחיצה מנגנת אותו ואת המועדפים הבאים מהדרייב</span></div></div>` + rowsHTML(likedDrive, 0).replace(/data-i="/g, 'data-d="') : '') +
+    (likedShown.length || likedDrive.length ? '' : '<div class="empty">' + (lkNext || driveMissing ? 'טוען…' : 'עדיין אין מועדפים. לוחצים על ♥ ליד שיר כדי להוסיף אותו לכאן') + '</div>');
   $('likedMore').classList.toggle('hidden', !lkNext || !liked.length || lkNext === '/me/tracks?limit=50');
+  if (driveMissing) driveFetch().then(() => { if (!$('tab-liked').classList.contains('hidden')) renderLiked(); }).catch(() => {});
+}
+/* סנכרון מועדפי הדרייב עם מה ששמור בסקריפט (אם גרסת הסקריפט כבר תומכת בזה) */
+function syncDriveFavs(lib){
+  if (!lib || !Array.isArray(lib.favs)) return;
+  [...favSet].filter(isDrive).forEach(u => favSet.delete(u));
+  lib.favs.forEach(id => favSet.add('drive:' + id));
+  store.set('favs', JSON.stringify([...favSet])); paintFavs();
+  if (!$('tab-liked').classList.contains('hidden')) renderLiked();
 }
 async function loadLiked(bg){
   if (!lkNext) return renderLiked();
@@ -578,6 +600,20 @@ async function loadFavsBg(){
 let favBusy = new Set();
 async function toggleFav(uri){
   if (!uri || favBusy.has(uri)) return;
+  if (isDrive(uri)){
+    const on = !favSet.has(uri), t = known.get(uri);
+    if (on) favSet.add(uri); else favSet.delete(uri);
+    store.set('favs', JSON.stringify([...favSet]));
+    paintFavs(); if (!$('tab-liked').classList.contains('hidden')) renderLiked();
+    toast(on ? 'נוסף למועדפים: ' + (t ? t.name : '') : 'הוסר מהמועדפים');
+    if (driveLib && Array.isArray(driveLib.favs)){
+      favBusy.add(uri);
+      try{ const j = await gas({ a:'fav', id: uri.slice(6), on: on ? '1' : '0' }); if (Array.isArray(j.favs)) driveLib.favs = j.favs; }
+      catch(e){ toast('המועדף נשמר בטלפון הזה בלבד: ' + e.message); }
+      finally{ favBusy.delete(uri); }
+    }
+    return;
+  }
   if (!canFav()){ $('favNote').classList.remove('hidden'); $('favNote').scrollIntoView({ behavior:'smooth', block:'center' }); toast('כדי לסמן מועדפים צריך לאשר מחדש את החיבור, למעלה'); return; }
   const on = !favSet.has(uri);
   favBusy.add(uri);
@@ -606,7 +642,9 @@ document.addEventListener('click', e => {
 $('favReauth').onclick = login;
 $('likedMore').onclick = () => loadLiked();
 $('likedList').addEventListener('click', e => {
-  const r = e.target.closest('.row'); if (!r || r.dataset.i == null) return;
+  const r = e.target.closest('.row'); if (!r) return;
+  if (r.dataset.d != null){ playLocal(likedDrive, +r.dataset.d); return; }
+  if (r.dataset.i == null) return;
   const i = +r.dataset.i;
   play({ uris: likedShown.slice(i, i + 100).map(t => t.uri) });
 });
@@ -1108,7 +1146,7 @@ async function gas(params){
   }
   return j;
 }
-async function driveFetch(){ driveLib = await gas({ a:'library' }); return driveLib; }
+async function driveFetch(){ driveLib = await gas({ a:'library' }); syncDriveFavs(driveLib); return driveLib; }
 /* הקבצים נטענים במלואם לזיכרון (עד 3 אחרונים), והשיר הבא נטען מראש כדי שלא יהיה המתנה */
 const blobs = new Map();
 function getBlob(id){
@@ -1178,8 +1216,8 @@ function tickLocal(){
 
 /* לשונית "מהדרייב" */
 function driveRowsHTML(tracks){
-  return tracks.map((t, i) => `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
-    <div class="t"><b>${esc(t.name)}</b><span>${esc(t.folder || '')}</span></div></div>`).join('');
+  return tracks.map((t, i) => { const uri = 'drive:' + t.id; known.set(uri, Object.assign({ drive:true, uri, who:'מהדרייב' }, t)); return `<div class="row" data-i="${i}"><div class="n">${i+1}</div>
+    <div class="t"><b>${esc(t.name)}</b><span>${esc(t.folder || '')}</span></div>${favBtn(uri)}</div>`; }).join('');
 }
 function renderDrive(){
   const q = norm($('dq').value);
