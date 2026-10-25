@@ -75,9 +75,10 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
   padding:10px 16px;border-radius:10px;font-size:14px;max-width:90vw;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
 .toast.show{opacity:1}
 .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:18px}
-.fav{flex:none;width:38px;height:38px;border-radius:50%;border:none;background:none;color:var(--line);font-size:20px;line-height:1;cursor:pointer;padding:0;margin:-6px -4px}
-.fav:hover{color:var(--muted)}
-.fav.on{color:var(--danger)}
+/* לב ליד כל שיר: ריק (♡) כשלא מסומן, מלא ואדום (♥) כשמסומן */
+.fav{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:0;margin:-6px -4px}
+.fav:hover{color:var(--text)}
+.fav.on{color:var(--danger);border-color:var(--danger)}
 .note .btn{margin-top:8px}
 .hidden{display:none!important}
 </style>
@@ -172,7 +173,7 @@ select{background:var(--card);border:1px solid var(--line);border-radius:10px;pa
 </div>
 
 <script>
-const VERSION = '20261025185126';
+const VERSION = '20261025185315';
 const CLIENT_ID = 'f12189bb77744f4dadd068f79de8f208';
 const BASE = location.pathname.replace(/(callback\/?)?(index\.html)?$/, '').replace(/\/?$/, '/');
 const REDIRECT_URI = location.origin + BASE + 'callback';
@@ -498,7 +499,7 @@ $('vol').addEventListener('input', () => { audio.volume = $('vol').value / 100; 
 
 /* ---------- רשימות שירים ---------- */
 const known = new Map(); /* שירים שהוצגו על המסך, לפי uri (לרשימת המועדפים) */
-function favBtn(uri){ return `<button class="fav${favSet.has(uri) ? ' on' : ''}" data-uri="${esc(uri)}" title="מועדף" aria-label="מועדף">♥</button>`; }
+function favBtn(uri){ const on = favSet.has(uri); return `<button class="fav${on ? ' on' : ''}" data-uri="${esc(uri)}" title="מועדף" aria-label="מועדף">${on ? '♥' : '♡'}</button>`; }
 function rowsHTML(tracks, start){
   return tracks.map((t, i) => { known.set(t.uri, t); return `<div class="row" data-i="${start+i}"><div class="n">${start+i+1}</div>
     <div class="t"><b>${esc(t.name)}</b><span>${esc(t.who || artists(t.artists))}${t.album && t.album.name ? ' · ' + esc(t.album.name) : ''}</span></div>
@@ -553,7 +554,7 @@ let favSet = new Set(); try{ favSet = new Set(JSON.parse(store.get('favs') || '[
 let lkNext = '/me/tracks?limit=50', liked = [], likedShown = [];
 /* בגרסה הציבורית מציגים במועדפים רק תוכן מאושר */
 const okTrack = t => FULL || !t.id || (t.artists || []).some(a => APPROVED_ARTIST_IDS.has(a.id)) || APPROVED_TRACK_IDS.has(t.id);
-function paintFavs(){ document.querySelectorAll('.fav').forEach(b => b.classList.toggle('on', favSet.has(b.dataset.uri))); }
+function paintFavs(){ document.querySelectorAll('.fav').forEach(b => { const on = favSet.has(b.dataset.uri); b.classList.toggle('on', on); b.textContent = on ? '♥' : '♡'; }); }
 /* מועדפים מהדרייב: מזוהים לפי uri שמתחיל ב-drive:, נשמרים דרך סקריפט הדרייב (ובינתיים גם בטלפון) */
 const isDrive = uri => String(uri || '').startsWith('drive:');
 let likedDrive = [];
